@@ -66,6 +66,7 @@ set(EXPR_FILES
   function_call_expr.cpp
   function_helper.cpp
   geo_functions.cpp
+  h3_functions.cpp
   grouping_sets_functions.cpp
   hyperloglog_functions.cpp
   in_const_predicate.cpp
@@ -125,3 +126,4 @@ if(STARROCKS_JIT_ENABLE)
 endif()
 
 ADD_BE_LIB(Exprs ${EXPR_FILES})
+target_link_libraries(Exprs PUBLIC Runtime ColumnSortCore Platform Geo libh3)
