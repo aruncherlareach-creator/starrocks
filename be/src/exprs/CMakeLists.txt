@@ -67,6 +67,7 @@ set(EXPR_FILES
   function_helper.cpp
   geo_functions.cpp
   h3_functions.cpp
+  mgrs_functions.cpp
   grouping_sets_functions.cpp
   hyperloglog_functions.cpp
   in_const_predicate.cpp

@@ -254,6 +254,11 @@ public class FunctionSet {
     public static final String H3_HEX_RING = "h3hexring";
     public static final String H3_GET_UNIDIRECTIONAL_EDGES_FROM_HEXAGON = "h3getunidirectionaledgesfromhexagon";
 
+    // MGRS functions:
+    public static final String GEO_TO_MGRS = "geotomgrs";
+    public static final String MGRS_TO_LAT = "mgrstolat";
+    public static final String MGRS_TO_LNG = "mgrstolng";
+
     // String functions
     public static final String APPEND_TRAILING_CHAR_IF_ABSENT = "append_trailing_char_if_absent";
     public static final String ASCII = "ascii";
