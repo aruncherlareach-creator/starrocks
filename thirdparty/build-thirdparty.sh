@@ -1758,6 +1758,7 @@ declare -a all_packages=(
     librdkafka
     pulsar
     s2
+    h3
     bitshuffle
     croaringbitmap
     cctz
