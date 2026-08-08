@@ -3,9 +3,12 @@
 # StarRocks (Verizon fork) — CI/CD pipeline
 # ---------------------------------------------------------------------------
 # Stages:
-#   build   → compile FE (Java/Maven) and BE (C++) in parallel
-#   package → kaniko Docker image builds (on verizon branches / main)
+#   package → kaniko builds multi-stage Dockerfiles (compile + image in one job)
 #   release → tagged Docker images + GitLab release (on semver tag)
+#
+# The BE and FE Dockerfiles (be-verizon.Dockerfile / fe-verizon.Dockerfile)
+# compile inside starrocks/dev-env-ubuntu:4.1.4 as a build stage, so no
+# artifact passing between CI jobs is required.
 #
 # Required CI/CD variables (set in GitLab project settings):
 #   EDGEAI_CI_ARTIFACTORY_HOSTNAME   — e.g. jpuv-an-docker-prod.oneartifactoryci.verizon.com
@@ -20,9 +23,6 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DOCKER_AUTH_CONFIG: >-
     {"auths":{"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}":{"username":"$EDGEAI_CI_ARTIFACTORY_USERNAME","password":"$EDGEAI_CI_ARTIFACTORY_PASSWORD"}}}
-  DEV_ENV_IMAGE: "starrocks/dev-env-ubuntu:4.1.4"
-  # ccache location inside the project dir so GitLab cache can store it
-  CCACHE_DIR: "${CI_PROJECT_DIR}/.ccache"
 
 default:
   interruptible: true
@@ -33,75 +33,24 @@ default:
     - h4xv-cicd-build
 
 stages:
-  - build
   - package
   - release
 
 # ---------------------------------------------------------------------------
-# Build — FE (Java/Maven)
-# ---------------------------------------------------------------------------
-build-fe:
-  stage: build
-  image: $DEV_ENV_IMAGE
-  cache:
-    key: "maven-fe-$CI_COMMIT_REF_SLUG"
-    paths:
-      - .m2/repository/
-  variables:
-    MAVEN_OPTS: "-Dmaven.repo.local=${CI_PROJECT_DIR}/.m2/repository"
-  script:
-    - ./build.sh --fe -j $(nproc)
-  artifacts:
-    paths:
-      - output/fe/
-    expire_in: 1 day
-  rules:
-    - when: on_success
-
-# ---------------------------------------------------------------------------
-# Build — BE (C++ with ccache)
-# ---------------------------------------------------------------------------
-build-be:
-  stage: build
-  image: $DEV_ENV_IMAGE
-  cache:
-    key: "ccache-be-$CI_COMMIT_REF_SLUG"
-    paths:
-      - .ccache/
-  before_script:
-    - ccache --max-size=5G || true
-    - ccache -z || true
-  script:
-    - ./build.sh --be -j $(nproc)
-  after_script:
-    - ccache -s || true
-  artifacts:
-    paths:
-      - output/be/
-    expire_in: 1 day
-  rules:
-    - when: on_success
-
-# ---------------------------------------------------------------------------
-# Package — BE Docker image
+# Package — BE (compile + Docker image in one Kaniko job)
 # ---------------------------------------------------------------------------
 docker-build-be:
   stage: package
   image:
     name: h4xv-nsit-docker-prod.oneartifactoryci-west.verizon.com/kaniko-executor:debug
     entrypoint: [""]
-  needs:
-    - job: build-be
-      artifacts: true
   before_script:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}\":{\"auth\":\"$(echo -n ${EDGEAI_CI_ARTIFACTORY_USERNAME}:${EDGEAI_CI_ARTIFACTORY_PASSWORD} | base64 | tr -d '\n')\"},\"gitlab.verizon.com:4567\":{\"auth\":\"$(echo -n gitlab-ci-token:${CI_JOB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
   script:
     - /kaniko/executor
         --context "${CI_PROJECT_DIR}"
-        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/be/be-ubuntu.Dockerfile"
-        --build-arg "ARTIFACT_SOURCE=local"
-        --build-arg "LOCAL_REPO_PATH=."
+        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/be/be-verizon.Dockerfile"
         --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-be:${CI_COMMIT_REF_SLUG}"
         --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-be:latest"
         --destination "${CI_REGISTRY_IMAGE}/be:${CI_COMMIT_REF_SLUG}"
@@ -116,25 +65,20 @@ docker-build-be:
   allow_failure: false
 
 # ---------------------------------------------------------------------------
-# Package — FE Docker image
+# Package — FE (compile + Docker image in one Kaniko job)
 # ---------------------------------------------------------------------------
 docker-build-fe:
   stage: package
   image:
     name: h4xv-nsit-docker-prod.oneartifactoryci-west.verizon.com/kaniko-executor:debug
     entrypoint: [""]
-  needs:
-    - job: build-fe
-      artifacts: true
   before_script:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}\":{\"auth\":\"$(echo -n ${EDGEAI_CI_ARTIFACTORY_USERNAME}:${EDGEAI_CI_ARTIFACTORY_PASSWORD} | base64 | tr -d '\n')\"},\"gitlab.verizon.com:4567\":{\"auth\":\"$(echo -n gitlab-ci-token:${CI_JOB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
   script:
     - /kaniko/executor
         --context "${CI_PROJECT_DIR}"
-        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/fe/fe-ubuntu.Dockerfile"
-        --build-arg "ARTIFACT_SOURCE=local"
-        --build-arg "LOCAL_REPO_PATH=."
+        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/fe/fe-verizon.Dockerfile"
         --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-fe:${CI_COMMIT_REF_SLUG}"
         --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-fe:latest"
         --destination "${CI_REGISTRY_IMAGE}/fe:${CI_COMMIT_REF_SLUG}"
@@ -163,9 +107,7 @@ docker-release-be:
   script:
     - /kaniko/executor
         --context "${CI_PROJECT_DIR}"
-        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/be/be-ubuntu.Dockerfile"
-        --build-arg "ARTIFACT_SOURCE=local"
-        --build-arg "LOCAL_REPO_PATH=."
+        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/be/be-verizon.Dockerfile"
         --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-be:${CI_COMMIT_TAG}"
         --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-be:latest"
         --destination "${CI_REGISTRY_IMAGE}/be:${CI_COMMIT_TAG}"
@@ -192,9 +134,7 @@ docker-release-fe:
   script:
     - /kaniko/executor
         --context "${CI_PROJECT_DIR}"
-        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/fe/fe-ubuntu.Dockerfile"
-        --build-arg "ARTIFACT_SOURCE=local"
-        --build-arg "LOCAL_REPO_PATH=."
+        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/fe/fe-verizon.Dockerfile"
         --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-fe:${CI_COMMIT_TAG}"
         --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-fe:latest"
         --destination "${CI_REGISTRY_IMAGE}/fe:${CI_COMMIT_TAG}"
