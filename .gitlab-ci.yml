@@ -1,0 +1,386 @@
+---
+# ---------------------------------------------------------------------------
+# StarRocks (Verizon fork) — CI/CD pipeline
+# ---------------------------------------------------------------------------
+# Stages:
+#   build   → compile FE (Java/Maven) and BE (C++) in parallel
+#   package → kaniko Docker image builds (on verizon branches / main)
+#   release → tagged Docker images + GitLab release (on semver tag)
+#
+# Required CI/CD variables (set in GitLab project settings):
+#   EDGEAI_CI_ARTIFACTORY_HOSTNAME   — e.g. jpuv-an-docker-prod.oneartifactoryci.verizon.com
+#   EDGEAI_CI_ARTIFACTORY_USERNAME   — Artifactory service account
+#   EDGEAI_CI_ARTIFACTORY_PASSWORD   — Artifactory service account password
+#   EDGEAI_CI_GITLAB_API_KEY         — GitLab API token with api scope
+# ---------------------------------------------------------------------------
+
+variables:
+  REGISTRY_SUB_PATH: "managed-services"
+  GIT_STRATEGY: clone
+  GIT_SUBMODULE_STRATEGY: recursive
+  # Authenticate GitLab executor when pulling the build image from Artifactory.
+  # The dev-env image must be mirrored there:
+  #   docker pull starrocks/dev-env-ubuntu:latest
+  #   docker tag  starrocks/dev-env-ubuntu:latest \
+  #     ${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-dev-env:latest
+  #   docker push ${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-dev-env:latest
+  DOCKER_AUTH_CONFIG: >-
+    {"auths":{"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}":{"username":"$EDGEAI_CI_ARTIFACTORY_USERNAME","password":"$EDGEAI_CI_ARTIFACTORY_PASSWORD"}}}
+  DEV_ENV_IMAGE: "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-dev-env:latest"
+  # ccache location inside the project dir so GitLab cache can store it
+  CCACHE_DIR: "${CI_PROJECT_DIR}/.ccache"
+
+default:
+  interruptible: true
+  retry:
+    max: 2
+    when: runner_system_failure
+  tags:
+    - h4xv-cicd-build
+
+stages:
+  - build
+  - package
+  - release
+
+# ---------------------------------------------------------------------------
+# Build — FE (Java/Maven)
+# ---------------------------------------------------------------------------
+build-fe:
+  stage: build
+  image: $DEV_ENV_IMAGE
+  cache:
+    key: "maven-fe-$CI_COMMIT_REF_SLUG"
+    paths:
+      - .m2/repository/
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=${CI_PROJECT_DIR}/.m2/repository"
+  script:
+    - ./build.sh --fe -j $(nproc)
+  artifacts:
+    paths:
+      - output/fe/
+    expire_in: 1 day
+  rules:
+    - when: on_success
+
+# ---------------------------------------------------------------------------
+# Build — BE (C++ with ccache)
+# ---------------------------------------------------------------------------
+build-be:
+  stage: build
+  image: $DEV_ENV_IMAGE
+  cache:
+    key: "ccache-be-$CI_COMMIT_REF_SLUG"
+    paths:
+      - .ccache/
+  before_script:
+    - ccache --max-size=5G || true
+    - ccache -z || true
+  script:
+    - ./build.sh --be -j $(nproc)
+  after_script:
+    - ccache -s || true
+  artifacts:
+    paths:
+      - output/be/
+    expire_in: 1 day
+  rules:
+    - when: on_success
+
+# ---------------------------------------------------------------------------
+# Package — BE Docker image
+# ---------------------------------------------------------------------------
+docker-build-be:
+  stage: package
+  image:
+    name: h4xv-nsit-docker-prod.oneartifactoryci-west.verizon.com/kaniko-executor:debug
+    entrypoint: [""]
+  needs:
+    - job: build-be
+      artifacts: true
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}\":{\"auth\":\"$(echo -n ${EDGEAI_CI_ARTIFACTORY_USERNAME}:${EDGEAI_CI_ARTIFACTORY_PASSWORD} | base64 | tr -d '\n')\"},\"gitlab.verizon.com:4567\":{\"auth\":\"$(echo -n gitlab-ci-token:${CI_JOB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+  script:
+    - /kaniko/executor
+        --context "${CI_PROJECT_DIR}"
+        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/be/be-ubuntu.Dockerfile"
+        --build-arg "ARTIFACT_SOURCE=local"
+        --build-arg "LOCAL_REPO_PATH=."
+        --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-be:${CI_COMMIT_REF_SLUG}"
+        --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-be:latest"
+        --destination "${CI_REGISTRY_IMAGE}/be:${CI_COMMIT_REF_SLUG}"
+        --destination "${CI_REGISTRY_IMAGE}/be:latest"
+        --label "org.opencontainers.image.source=${CI_PROJECT_URL}"
+        --label "org.opencontainers.image.revision=${CI_COMMIT_SHA}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /verizon/ || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+      when: on_success
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+  allow_failure: false
+
+# ---------------------------------------------------------------------------
+# Package — FE Docker image
+# ---------------------------------------------------------------------------
+docker-build-fe:
+  stage: package
+  image:
+    name: h4xv-nsit-docker-prod.oneartifactoryci-west.verizon.com/kaniko-executor:debug
+    entrypoint: [""]
+  needs:
+    - job: build-fe
+      artifacts: true
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}\":{\"auth\":\"$(echo -n ${EDGEAI_CI_ARTIFACTORY_USERNAME}:${EDGEAI_CI_ARTIFACTORY_PASSWORD} | base64 | tr -d '\n')\"},\"gitlab.verizon.com:4567\":{\"auth\":\"$(echo -n gitlab-ci-token:${CI_JOB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+  script:
+    - /kaniko/executor
+        --context "${CI_PROJECT_DIR}"
+        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/fe/fe-ubuntu.Dockerfile"
+        --build-arg "ARTIFACT_SOURCE=local"
+        --build-arg "LOCAL_REPO_PATH=."
+        --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-fe:${CI_COMMIT_REF_SLUG}"
+        --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-fe:latest"
+        --destination "${CI_REGISTRY_IMAGE}/fe:${CI_COMMIT_REF_SLUG}"
+        --destination "${CI_REGISTRY_IMAGE}/fe:latest"
+        --label "org.opencontainers.image.source=${CI_PROJECT_URL}"
+        --label "org.opencontainers.image.revision=${CI_COMMIT_SHA}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /verizon/ || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+      when: on_success
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+  allow_failure: false
+
+# ---------------------------------------------------------------------------
+# Release — BE image on semver tag
+# ---------------------------------------------------------------------------
+docker-release-be:
+  stage: release
+  needs: []
+  image:
+    name: h4xv-nsit-docker-prod.oneartifactoryci-west.verizon.com/kaniko-executor:debug
+    entrypoint: [""]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}\":{\"auth\":\"$(echo -n ${EDGEAI_CI_ARTIFACTORY_USERNAME}:${EDGEAI_CI_ARTIFACTORY_PASSWORD} | base64 | tr -d '\n')\"},\"gitlab.verizon.com:4567\":{\"auth\":\"$(echo -n gitlab-ci-token:${CI_JOB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+  script:
+    - /kaniko/executor
+        --context "${CI_PROJECT_DIR}"
+        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/be/be-ubuntu.Dockerfile"
+        --build-arg "ARTIFACT_SOURCE=local"
+        --build-arg "LOCAL_REPO_PATH=."
+        --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-be:${CI_COMMIT_TAG}"
+        --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-be:latest"
+        --destination "${CI_REGISTRY_IMAGE}/be:${CI_COMMIT_TAG}"
+        --destination "${CI_REGISTRY_IMAGE}/be:latest"
+        --label "org.opencontainers.image.source=${CI_PROJECT_URL}"
+        --label "org.opencontainers.image.revision=${CI_COMMIT_SHA}"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+      when: on_success
+  allow_failure: false
+
+# ---------------------------------------------------------------------------
+# Release — FE image on semver tag
+# ---------------------------------------------------------------------------
+docker-release-fe:
+  stage: release
+  needs: []
+  image:
+    name: h4xv-nsit-docker-prod.oneartifactoryci-west.verizon.com/kaniko-executor:debug
+    entrypoint: [""]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}\":{\"auth\":\"$(echo -n ${EDGEAI_CI_ARTIFACTORY_USERNAME}:${EDGEAI_CI_ARTIFACTORY_PASSWORD} | base64 | tr -d '\n')\"},\"gitlab.verizon.com:4567\":{\"auth\":\"$(echo -n gitlab-ci-token:${CI_JOB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+  script:
+    - /kaniko/executor
+        --context "${CI_PROJECT_DIR}"
+        --dockerfile "${CI_PROJECT_DIR}/docker/dockerfiles/fe/fe-ubuntu.Dockerfile"
+        --build-arg "ARTIFACT_SOURCE=local"
+        --build-arg "LOCAL_REPO_PATH=."
+        --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-fe:${CI_COMMIT_TAG}"
+        --destination "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/${REGISTRY_SUB_PATH}/starrocks-fe:latest"
+        --destination "${CI_REGISTRY_IMAGE}/fe:${CI_COMMIT_TAG}"
+        --destination "${CI_REGISTRY_IMAGE}/fe:latest"
+        --label "org.opencontainers.image.source=${CI_PROJECT_URL}"
+        --label "org.opencontainers.image.revision=${CI_COMMIT_SHA}"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+      when: on_success
+  allow_failure: false
+
+# ---------------------------------------------------------------------------
+# Notify — email on release tag
+# ---------------------------------------------------------------------------
+notify-release:
+  stage: release
+  image: jpuv-an-docker-prod.oneartifactoryci.verizon.com/python:3.12-slim
+  needs:
+    - job: docker-release-be
+    - job: docker-release-fe
+  script:
+    - |
+      cat > /tmp/notify.py << 'PYEOF'
+      import os, smtplib, ssl
+      from email.mime.multipart import MIMEMultipart
+      from email.mime.text import MIMEText
+
+      host     = os.getenv("SPRING_MAIL_HOST", "smtp.verizon.com")
+      port     = int(os.getenv("SPRING_MAIL_PORT", "25"))
+      user     = os.environ["EDGEAI_CI_ARTIFACTORY_USERNAME"]
+      password = os.environ["EDGEAI_CI_ARTIFACTORY_PASSWORD"]
+
+      tag          = os.environ["CI_COMMIT_TAG"]
+      project_url  = os.environ["CI_PROJECT_URL"]
+      pipeline_url = f"{project_url}/-/pipelines/{os.environ['CI_PIPELINE_ID']}"
+      release_url  = f"{project_url}/-/releases/{tag}"
+      art_host     = os.environ["EDGEAI_CI_ARTIFACTORY_HOSTNAME"]
+      sub_path     = os.environ["REGISTRY_SUB_PATH"]
+
+      be_image  = f"{art_host}/{sub_path}/starrocks-be:{tag}"
+      fe_image  = f"{art_host}/{sub_path}/starrocks-fe:{tag}"
+      gl_be     = f"gitlab.verizon.com:4567/{os.environ['CI_PROJECT_PATH']}/be:{tag}"
+      gl_fe     = f"gitlab.verizon.com:4567/{os.environ['CI_PROJECT_PATH']}/fe:{tag}"
+
+      to_addr   = "Abhi-AllTeam@verizonwireless.com"
+      from_addr = "no-reply@verizon.com"
+
+      msg = MIMEMultipart("alternative")
+      msg["Subject"] = f"[StarRocks] Release {tag} published"
+      msg["From"]    = from_addr
+      msg["To"]      = to_addr
+
+      text = (
+          f"StarRocks (Verizon) {tag} has been released.\n\n"
+          f"Docker Images\n"
+          f"  BE (Artifactory) : {be_image}\n"
+          f"  FE (Artifactory) : {fe_image}\n"
+          f"  BE (GitLab)      : {gl_be}\n"
+          f"  FE (GitLab)      : {gl_fe}\n\n"
+          f"Release notes : {release_url}\n"
+          f"Pipeline      : {pipeline_url}\n"
+      )
+      html = (
+          "<html><body>"
+          f"<p>StarRocks (Verizon) <strong>{tag}</strong> has been released.</p>"
+          "<h3>Docker Images</h3><ul>"
+          f"<li><strong>BE (Artifactory):</strong> <code>{be_image}</code></li>"
+          f"<li><strong>FE (Artifactory):</strong> <code>{fe_image}</code></li>"
+          f"<li><strong>BE (GitLab Registry):</strong> <code>{gl_be}</code></li>"
+          f"<li><strong>FE (GitLab Registry):</strong> <code>{gl_fe}</code></li>"
+          f'<li><a href="{release_url}">Release notes</a></li>'
+          f'<li><a href="{pipeline_url}">Pipeline</a></li>'
+          "</ul></body></html>"
+      )
+      msg.attach(MIMEText(text, "plain"))
+      msg.attach(MIMEText(html,  "html"))
+
+      with smtplib.SMTP(host, port, timeout=30) as smtp:
+          smtp.ehlo()
+          try:
+              ctx = ssl.create_default_context()
+              ctx.check_hostname = False
+              ctx.verify_mode = ssl.CERT_NONE
+              smtp.starttls(context=ctx)
+              smtp.ehlo()
+          except Exception:
+              pass
+          try:
+              smtp.login(user, password)
+          except Exception:
+              pass
+          smtp.sendmail(from_addr, [to_addr], msg.as_string())
+
+      print(f"Release notification sent to {to_addr} via {host}:{port}")
+      PYEOF
+      python3 /tmp/notify.py
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+      when: on_success
+  allow_failure: true
+
+# ---------------------------------------------------------------------------
+# Create GitLab release entry on main/master push
+# (image tag = branch name slug — no version auto-increment)
+# ---------------------------------------------------------------------------
+create-release-tag:
+  stage: release
+  image: jpuv-an-docker-prod.oneartifactoryci.verizon.com/python:3.12-slim
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq curl jq git > /dev/null 2>&1
+    - git config --global --add safe.directory '*'
+  script:
+    - |
+      TAG_NAME="${CI_COMMIT_REF_SLUG}"
+
+      if [ -z "${EDGEAI_CI_GITLAB_API_KEY}" ]; then
+        echo "ERROR: EDGEAI_CI_GITLAB_API_KEY is not set"
+        exit 1
+      fi
+
+      # Build changelog from the last 20 commits on this branch
+      CHANGELOG=$(git log --pretty=format:"- %s (%h)" -20 2>/dev/null || echo "- See commit history for details")
+      [ -z "$CHANGELOG" ] && CHANGELOG="- See commit history for details"
+
+      art_host="${EDGEAI_CI_ARTIFACTORY_HOSTNAME}"
+      sub="${REGISTRY_SUB_PATH}"
+
+      RELEASE_BODY=$(jq -n \
+        --arg tag_name "${TAG_NAME}" \
+        --arg be_image "${art_host}/${sub}/starrocks-be:${TAG_NAME}" \
+        --arg fe_image "${art_host}/${sub}/starrocks-fe:${TAG_NAME}" \
+        --arg gl_be    "gitlab.verizon.com:4567/${CI_PROJECT_PATH}/be:${TAG_NAME}" \
+        --arg gl_fe    "gitlab.verizon.com:4567/${CI_PROJECT_PATH}/fe:${TAG_NAME}" \
+        --arg compare_url "${CI_PROJECT_URL}/-/commits/${CI_COMMIT_BRANCH}" \
+        --arg changelog "${CHANGELOG}" \
+        '{
+          tag_name: $tag_name,
+          name: ("StarRocks Verizon build — " + $tag_name),
+          description: (
+            "## Docker Images\n\n"
+            + "**BE (Artifactory):** `" + $be_image + "`\n"
+            + "**FE (Artifactory):** `" + $fe_image + "`\n"
+            + "**BE (GitLab Registry):** `" + $gl_be + "`\n"
+            + "**FE (GitLab Registry):** `" + $gl_fe + "`\n\n"
+            + "## Changes\n\n" + $changelog + "\n\n"
+            + "[Full commit log](" + $compare_url + ")"
+          ),
+          ref: (env.CI_COMMIT_SHA),
+          assets: {
+            links: [
+              { name: "BE image (Artifactory)", url: ("https://" + $be_image), link_type: "image" },
+              { name: "FE image (Artifactory)", url: ("https://" + $fe_image), link_type: "image" }
+            ]
+          }
+        }')
+
+      RESPONSE=$(curl -sS -w "\n%{http_code}" --retry 3 --retry-delay 5 --retry-all-errors \
+        --header "PRIVATE-TOKEN: ${EDGEAI_CI_GITLAB_API_KEY}" \
+        --header "Content-Type: application/json" \
+        --request POST \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases" \
+        --data "${RELEASE_BODY}" 2>&1) || true
+      HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+      BODY=$(echo "$RESPONSE" | sed '$d')
+      if ! echo "$HTTP_CODE" | grep -qE '^[0-9]+$'; then
+        echo "ERROR: curl failed:" && echo "$RESPONSE" && exit 1
+      elif [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
+        # 409 = release already exists for this ref — treat as success
+        if echo "$BODY" | grep -qi "already exists\|409"; then
+          echo "Release for ${TAG_NAME} already exists — skipping."
+        else
+          echo "ERROR: Failed to create release (HTTP ${HTTP_CODE}):"
+          echo "$BODY" | jq . 2>/dev/null || echo "$BODY"
+          exit 1
+        fi
+      else
+        echo "$BODY" | jq . 2>/dev/null || echo "$BODY"
+        echo "Release entry created for ${TAG_NAME}."
+      fi
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /verizon/ || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+      when: on_success
+  allow_failure: false
