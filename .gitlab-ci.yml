@@ -18,11 +18,9 @@ variables:
   REGISTRY_SUB_PATH: "managed-services"
   GIT_STRATEGY: clone
   GIT_SUBMODULE_STRATEGY: recursive
-  # Artifactory acts as a Docker Hub proxy — use the same path format as
-  # jpuv-an-docker-prod.oneartifactoryci.verizon.com/python:3.12-slim
   DOCKER_AUTH_CONFIG: >-
     {"auths":{"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}":{"username":"$EDGEAI_CI_ARTIFACTORY_USERNAME","password":"$EDGEAI_CI_ARTIFACTORY_PASSWORD"}}}
-  DEV_ENV_IMAGE: "${EDGEAI_CI_ARTIFACTORY_HOSTNAME}/starrocks/dev-env-ubuntu:latest"
+  DEV_ENV_IMAGE: "starrocks/dev-env-ubuntu:latest"
   # ccache location inside the project dir so GitLab cache can store it
   CCACHE_DIR: "${CI_PROJECT_DIR}/.ccache"
 
