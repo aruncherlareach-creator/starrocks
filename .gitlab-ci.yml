@@ -20,7 +20,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DOCKER_AUTH_CONFIG: >-
     {"auths":{"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}":{"username":"$EDGEAI_CI_ARTIFACTORY_USERNAME","password":"$EDGEAI_CI_ARTIFACTORY_PASSWORD"}}}
-  DEV_ENV_IMAGE: "starrocks/dev-env-ubuntu:latest"
+  DEV_ENV_IMAGE: "starrocks/dev-env-ubuntu:4.1.4"
   # ccache location inside the project dir so GitLab cache can store it
   CCACHE_DIR: "${CI_PROJECT_DIR}/.ccache"
 
