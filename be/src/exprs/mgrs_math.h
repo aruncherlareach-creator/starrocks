@@ -52,11 +52,11 @@ static constexpr int NUM_100K_SETS = 6;
 static constexpr std::string_view SET_ORIGIN_COLUMN_LETTERS = "AJSAJS";
 static constexpr std::string_view SET_ORIGIN_ROW_LETTERS    = "AFAFAF";
 
-static constexpr int A_ASCII = 'A';
-static constexpr int I_ASCII = 'I';
-static constexpr int O_ASCII = 'O';
-static constexpr int V_ASCII = 'V';
-static constexpr int Z_ASCII = 'Z';
+static constexpr int MGRS_MGRS_A_ASCII = 'A';
+static constexpr int MGRS_MGRS_I_ASCII = 'I';
+static constexpr int MGRS_MGRS_O_ASCII = 'O';
+static constexpr int MGRS_MGRS_V_ASCII = 'V';
+static constexpr int MGRS_MGRS_Z_ASCII = 'Z';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -71,29 +71,29 @@ inline std::string getLetter100kID(int column, int row, int set) {
     int row_letter = SET_ORIGIN_ROW_LETTERS[index] + row;
     bool rollover = false;
 
-    if (col > Z_ASCII) { col = col - Z_ASCII + A_ASCII - 1; rollover = true; }
-    if (col == I_ASCII || (SET_ORIGIN_COLUMN_LETTERS[index] < I_ASCII && col > I_ASCII)
-        || ((col > I_ASCII || SET_ORIGIN_COLUMN_LETTERS[index] < I_ASCII) && rollover))
+    if (col > MGRS_Z_ASCII) { col = col - MGRS_Z_ASCII + MGRS_A_ASCII - 1; rollover = true; }
+    if (col == MGRS_I_ASCII || (SET_ORIGIN_COLUMN_LETTERS[index] < MGRS_I_ASCII && col > MGRS_I_ASCII)
+        || ((col > MGRS_I_ASCII || SET_ORIGIN_COLUMN_LETTERS[index] < MGRS_I_ASCII) && rollover))
         ++col;
-    if (col == O_ASCII || (SET_ORIGIN_COLUMN_LETTERS[index] < O_ASCII && col > O_ASCII)
-        || ((col > O_ASCII || SET_ORIGIN_COLUMN_LETTERS[index] < O_ASCII) && rollover)) {
+    if (col == MGRS_O_ASCII || (SET_ORIGIN_COLUMN_LETTERS[index] < MGRS_O_ASCII && col > MGRS_O_ASCII)
+        || ((col > MGRS_O_ASCII || SET_ORIGIN_COLUMN_LETTERS[index] < MGRS_O_ASCII) && rollover)) {
         ++col;
-        if (col == I_ASCII) ++col;
+        if (col == MGRS_I_ASCII) ++col;
     }
-    if (col > Z_ASCII) col = col - Z_ASCII + A_ASCII - 1;
+    if (col > MGRS_Z_ASCII) col = col - MGRS_Z_ASCII + MGRS_A_ASCII - 1;
 
-    if (row_letter > V_ASCII) { row_letter = row_letter - V_ASCII + A_ASCII - 1; rollover = true; }
+    if (row_letter > MGRS_V_ASCII) { row_letter = row_letter - MGRS_V_ASCII + MGRS_A_ASCII - 1; rollover = true; }
     else rollover = false;
 
-    if (row_letter == I_ASCII || (SET_ORIGIN_ROW_LETTERS[index] < I_ASCII && row_letter > I_ASCII)
-        || ((row_letter > I_ASCII || SET_ORIGIN_ROW_LETTERS[index] < I_ASCII) && rollover))
+    if (row_letter == MGRS_I_ASCII || (SET_ORIGIN_ROW_LETTERS[index] < MGRS_I_ASCII && row_letter > MGRS_I_ASCII)
+        || ((row_letter > MGRS_I_ASCII || SET_ORIGIN_ROW_LETTERS[index] < MGRS_I_ASCII) && rollover))
         ++row_letter;
-    if (row_letter == O_ASCII || (SET_ORIGIN_ROW_LETTERS[index] < O_ASCII && row_letter > O_ASCII)
-        || ((row_letter > O_ASCII || SET_ORIGIN_ROW_LETTERS[index] < O_ASCII) && rollover)) {
+    if (row_letter == MGRS_O_ASCII || (SET_ORIGIN_ROW_LETTERS[index] < MGRS_O_ASCII && row_letter > MGRS_O_ASCII)
+        || ((row_letter > MGRS_O_ASCII || SET_ORIGIN_ROW_LETTERS[index] < MGRS_O_ASCII) && rollover)) {
         ++row_letter;
-        if (row_letter == I_ASCII) ++row_letter;
+        if (row_letter == MGRS_I_ASCII) ++row_letter;
     }
-    if (row_letter > V_ASCII) row_letter = row_letter - V_ASCII + A_ASCII - 1;
+    if (row_letter > MGRS_V_ASCII) row_letter = row_letter - MGRS_V_ASCII + MGRS_A_ASCII - 1;
 
     std::string result;
     result += static_cast<char>(col);
@@ -130,11 +130,11 @@ inline bool getEastingFromChar(char letter, int set, double& easting_out) {
     bool rewound = false;
     while (cur != static_cast<int>(letter)) {
         ++cur;
-        if (cur == I_ASCII) ++cur;
-        if (cur == O_ASCII) ++cur;
-        if (cur > Z_ASCII) {
+        if (cur == MGRS_I_ASCII) ++cur;
+        if (cur == MGRS_O_ASCII) ++cur;
+        if (cur > MGRS_Z_ASCII) {
             if (rewound) return false;
-            cur = A_ASCII;
+            cur = MGRS_A_ASCII;
             rewound = true;
         }
         easting += 100000.0;
@@ -151,11 +151,11 @@ inline bool getNorthingFromChar(char letter, int set, double& northing_out) {
     bool rewound = false;
     while (cur != static_cast<int>(letter)) {
         ++cur;
-        if (cur == I_ASCII) ++cur;
-        if (cur == O_ASCII) ++cur;
-        if (cur > V_ASCII) {
+        if (cur == MGRS_I_ASCII) ++cur;
+        if (cur == MGRS_O_ASCII) ++cur;
+        if (cur > MGRS_V_ASCII) {
             if (rewound) return false;
-            cur = A_ASCII;
+            cur = MGRS_A_ASCII;
             rewound = true;
         }
         northing += 100000.0;

@@ -11,6 +11,9 @@
 FROM starrocks/dev-env-ubuntu:4.1.4 AS builder
 WORKDIR /starrocks
 COPY . .
+# H3 was added after the dev-env 4.1.4 image was cut — build it first
+RUN git config --global --add safe.directory /starrocks && \
+    ./thirdparty/build-thirdparty.sh h3
 RUN ./build.sh --be -j "$(nproc)" && \
     rm -f output/be/lib/starrocks_be.debuginfo
 
