@@ -127,4 +127,4 @@ if(STARROCKS_JIT_ENABLE)
 endif()
 
 ADD_BE_LIB(Exprs ${EXPR_FILES})
-target_link_libraries(Exprs PUBLIC Runtime ColumnSortCore Platform Geo libh3)
+target_link_libraries(Exprs PRIVATE libh3)
