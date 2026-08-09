@@ -289,7 +289,7 @@ StatusOr<ColumnPtr> H3Functions::h3_hex_area_m2(FunctionContext* ctx, const Colu
     for (int row = 0; row < size; ++row) {
         if (res_col.is_null(row)) { result.append_null(); continue; }
         double area;
-        if (hexAreaM2(res_col.value(row), &area) != E_SUCCESS) { result.append_null(); continue; }
+        if (getHexagonAreaAvgM2(res_col.value(row), &area) != E_SUCCESS) { result.append_null(); continue; }
         result.append(area);
     }
     return result.build(ColumnHelper::is_all_const(columns));
@@ -303,7 +303,7 @@ StatusOr<ColumnPtr> H3Functions::h3_hex_area_km2(FunctionContext* ctx, const Col
     for (int row = 0; row < size; ++row) {
         if (res_col.is_null(row)) { result.append_null(); continue; }
         double area;
-        if (hexAreaKm2(res_col.value(row), &area) != E_SUCCESS) { result.append_null(); continue; }
+        if (getHexagonAreaAvgKm2(res_col.value(row), &area) != E_SUCCESS) { result.append_null(); continue; }
         result.append(area);
     }
     return result.build(ColumnHelper::is_all_const(columns));
@@ -403,7 +403,7 @@ StatusOr<ColumnPtr> H3Functions::h3_exact_edge_length_m(FunctionContext* ctx, co
     for (int row = 0; row < size; ++row) {
         if (h3_col.is_null(row)) { result.append_null(); continue; }
         double len;
-        if (exactEdgeLengthM(static_cast<H3Index>(h3_col.value(row)), &len) != E_SUCCESS) {
+        if (edgeLengthM(static_cast<H3Index>(h3_col.value(row)), &len) != E_SUCCESS) {
             result.append_null(); continue;
         }
         result.append(len);
@@ -419,7 +419,7 @@ StatusOr<ColumnPtr> H3Functions::h3_exact_edge_length_km(FunctionContext* ctx, c
     for (int row = 0; row < size; ++row) {
         if (h3_col.is_null(row)) { result.append_null(); continue; }
         double len;
-        if (exactEdgeLengthKm(static_cast<H3Index>(h3_col.value(row)), &len) != E_SUCCESS) {
+        if (edgeLengthKm(static_cast<H3Index>(h3_col.value(row)), &len) != E_SUCCESS) {
             result.append_null(); continue;
         }
         result.append(len);
@@ -435,7 +435,7 @@ StatusOr<ColumnPtr> H3Functions::h3_exact_edge_length_rads(FunctionContext* ctx,
     for (int row = 0; row < size; ++row) {
         if (h3_col.is_null(row)) { result.append_null(); continue; }
         double len;
-        if (exactEdgeLengthRads(static_cast<H3Index>(h3_col.value(row)), &len) != E_SUCCESS) {
+        if (edgeLengthRads(static_cast<H3Index>(h3_col.value(row)), &len) != E_SUCCESS) {
             result.append_null(); continue;
         }
         result.append(len);
@@ -642,9 +642,7 @@ StatusOr<ColumnPtr> H3Functions::h3_point_dist_m(FunctionContext* ctx, const Col
         }
         LatLng a{degsToRads(lat1.value(row)), degsToRads(lon1.value(row))};
         LatLng b{degsToRads(lat2.value(row)), degsToRads(lon2.value(row))};
-        double dist;
-        if (pointDistM(&a, &b, &dist) != E_SUCCESS) { result.append_null(); continue; }
-        result.append(dist);
+        result.append(greatCircleDistanceM(&a, &b));
     }
     return result.build(ColumnHelper::is_all_const(columns));
 }
@@ -661,9 +659,7 @@ StatusOr<ColumnPtr> H3Functions::h3_point_dist_km(FunctionContext* ctx, const Co
         }
         LatLng a{degsToRads(lat1.value(row)), degsToRads(lon1.value(row))};
         LatLng b{degsToRads(lat2.value(row)), degsToRads(lon2.value(row))};
-        double dist;
-        if (pointDistKm(&a, &b, &dist) != E_SUCCESS) { result.append_null(); continue; }
-        result.append(dist);
+        result.append(greatCircleDistanceKm(&a, &b));
     }
     return result.build(ColumnHelper::is_all_const(columns));
 }
@@ -680,9 +676,7 @@ StatusOr<ColumnPtr> H3Functions::h3_point_dist_rads(FunctionContext* ctx, const 
         }
         LatLng a{degsToRads(lat1.value(row)), degsToRads(lon1.value(row))};
         LatLng b{degsToRads(lat2.value(row)), degsToRads(lon2.value(row))};
-        double dist;
-        if (pointDistRads(&a, &b, &dist) != E_SUCCESS) { result.append_null(); continue; }
-        result.append(dist);
+        result.append(greatCircleDistanceRads(&a, &b));
     }
     return result.build(ColumnHelper::is_all_const(columns));
 }
@@ -858,7 +852,7 @@ StatusOr<ColumnPtr> H3Functions::h3_hex_ring(FunctionContext* ctx, const Columns
         int k = k_col.value(row);
         int64_t ring_size = (k == 0) ? 1 : (int64_t)6 * k;
         std::vector<H3Index> buf(ring_size, 0);
-        if (gridRing(static_cast<H3Index>(h3_col.value(row)), k, buf.data()) != E_SUCCESS) {
+        if (gridRingUnsafe(static_cast<H3Index>(h3_col.value(row)), k, buf.data()) != E_SUCCESS) {
             nulls[row] = true; continue;
         }
         for (auto h : buf) {
