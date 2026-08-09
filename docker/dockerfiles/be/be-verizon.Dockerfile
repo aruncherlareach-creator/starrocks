@@ -11,10 +11,30 @@
 FROM starrocks/dev-env-ubuntu:4.1.4 AS builder
 WORKDIR /starrocks
 COPY . .
-# H3 was added after the dev-env 4.1.4 image was cut — build it first
+# H3 was added after dev-env:4.1.4 was cut — download and build it directly
+# rather than via build-thirdparty.sh (which re-runs download-thirdparty.sh
+# for all packages and can fail on pre-existing patch state).
+RUN TP_INSTALL=/var/local/thirdparty/installed && \
+    TP_SRC=/var/local/thirdparty/src && \
+    mkdir -p "$TP_SRC" && \
+    cd "$TP_SRC" && \
+    wget -q https://github.com/uber/h3/archive/refs/tags/v4.1.0.tar.gz -O h3-4.1.0.tar.gz && \
+    tar xzf h3-4.1.0.tar.gz && \
+    mkdir -p h3-4.1.0/build && \
+    cd h3-4.1.0/build && \
+    cmake -DCMAKE_INSTALL_PREFIX="$TP_INSTALL" \
+          -DCMAKE_INSTALL_LIBDIR=lib \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DENABLE_TESTING=OFF \
+          -DENABLE_COVERAGE=OFF \
+          -DENABLE_BENCHMARKS=OFF \
+          -DENABLE_EXAMPLES=OFF \
+          -DENABLE_DOCS=OFF \
+          .. && \
+    make -j"$(nproc)" && \
+    make install
 RUN git config --global --add safe.directory /starrocks && \
-    ./thirdparty/build-thirdparty.sh h3
-RUN ./build.sh --be -j "$(nproc)" && \
+    ./build.sh --be -j "$(nproc)" && \
     rm -f output/be/lib/starrocks_be.debuginfo
 
 # ---------------------------------------------------------------------------

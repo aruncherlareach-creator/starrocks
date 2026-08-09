@@ -52,11 +52,11 @@ static constexpr int NUM_100K_SETS = 6;
 static constexpr std::string_view SET_ORIGIN_COLUMN_LETTERS = "AJSAJS";
 static constexpr std::string_view SET_ORIGIN_ROW_LETTERS    = "AFAFAF";
 
-static constexpr int MGRS_MGRS_A_ASCII = 'A';
-static constexpr int MGRS_MGRS_I_ASCII = 'I';
-static constexpr int MGRS_MGRS_O_ASCII = 'O';
-static constexpr int MGRS_MGRS_V_ASCII = 'V';
-static constexpr int MGRS_MGRS_Z_ASCII = 'Z';
+static constexpr int MGRS_A_ASCII = 'A';
+static constexpr int MGRS_I_ASCII = 'I';
+static constexpr int MGRS_O_ASCII = 'O';
+static constexpr int MGRS_V_ASCII = 'V';
+static constexpr int MGRS_Z_ASCII = 'Z';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
