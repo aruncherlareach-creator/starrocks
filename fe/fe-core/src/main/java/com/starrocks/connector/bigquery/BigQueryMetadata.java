@@ -19,7 +19,6 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.Job;
-import com.google.cloud.bigquery.JobConfiguration;
 import com.google.cloud.bigquery.JobId;
 import com.google.cloud.bigquery.JobInfo;
 import com.google.cloud.bigquery.QueryJobConfiguration;
@@ -331,8 +330,8 @@ public class BigQueryMetadata implements ConnectorMetadata {
 
         QueryJobConfiguration jobConfig = QueryJobConfiguration.newBuilder(sql)
                 .setDestinationTable(destTableId)
-                .setCreateDisposition(JobConfiguration.CreateDisposition.CREATE_IF_NEEDED)
-                .setWriteDisposition(JobConfiguration.WriteDisposition.WRITE_TRUNCATE)
+                .setCreateDisposition(JobInfo.CreateDisposition.CREATE_IF_NEEDED)
+                .setWriteDisposition(JobInfo.WriteDisposition.WRITE_TRUNCATE)
                 .build();
 
         String jobId = "sr-view-" + UUID.randomUUID();
@@ -425,9 +424,9 @@ public class BigQueryMetadata implements ConnectorMetadata {
         for (Map.Entry<ColumnRefOperator, Column> entry : columns.entrySet()) {
             ConnectorNdvEstimator.TypeCategory cat =
                     ConnectorNdvEstimator.fromStarRocksType(entry.getValue().getType());
-            double ndv = Math.max(1.0, Math.min(ConnectorNdvEstimator.typeNdv(cat, rowCount), rowCount));
+            double ndv = Math.max(1.0, Math.min(ConnectorNdvEstimator.typeNdv(cat, (long) rowCount), rowCount));
             builder.addColumnStatistic(entry.getKey(), ColumnStatistic.builder()
-                    .setDistinctValuesCount((long) ndv)
+                    .setDistinctValuesCount(ndv)
                     .setAverageRowSize(entry.getValue().getType().getTypeSize())
                     .setNullsFraction(0)
                     .setType(ColumnStatistic.StatisticType.ESTIMATE)
