@@ -168,9 +168,6 @@ public abstract class OperatorVisitor<R, C> {
         return visitLogicalTableScan(node, context);
     }
 
-        return visitLogicalTableScan(node, context);
-    }
-
     public R visitLogicalKuduScan(LogicalKuduScanOperator node, C context) {
         return visitLogicalTableScan(node, context);
     }
@@ -268,6 +265,9 @@ public abstract class OperatorVisitor<R, C> {
     }
 
     public R visitLogicalBigQueryScan(LogicalBigQueryScanOperator node, C context) {
+        return visitLogicalTableScan(node, context);
+    }
+
     public R visitLogicalLimit(LogicalLimitOperator node, C context) {
         return visitOperator(node, context);
     }
@@ -375,9 +375,6 @@ public abstract class OperatorVisitor<R, C> {
         return visitOperator(node, context);
     }
 
-        return visitOperator(node, context);
-    }
-
     public R visitPhysicalIcebergMetadataScan(PhysicalIcebergMetadataScanOperator node, C context) {
         return visitOperator(node, context);
     }
@@ -431,6 +428,9 @@ public abstract class OperatorVisitor<R, C> {
     }
 
     public R visitPhysicalBigQueryScan(PhysicalBigQueryScanOperator node, C context) {
+        return visitOperator(node, context);
+    }
+
     public R visitPhysicalLimit(PhysicalLimitOperator node, C context) {
         return visitOperator(node, context);
     }

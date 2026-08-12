@@ -780,14 +780,6 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
         return computeOdpsScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
     }
 
-    @Override
-        return computeBigQueryScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
-    }
-
-    @Override
-        return computeBigQueryScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
-    }
-
     private Void computeBigQueryScanNode(Operator node, ExpressionContext context, Table table,
                                           Map<ColumnRefOperator, Column> columnRefOperatorColumnMap) {
         if (context.getStatistics() == null) {
@@ -817,6 +809,9 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
 
     @Override
     public Void visitPhysicalBigQueryScan(PhysicalBigQueryScanOperator node, ExpressionContext context) {
+        return computeBigQueryScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
+    }
+
     public Void visitPhysicalKuduScan(PhysicalKuduScanOperator node, ExpressionContext context) {
         return computeKuduScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
     }
@@ -1670,6 +1665,9 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
 
     @Override
     public Void visitLogicalBigQueryScan(LogicalBigQueryScanOperator node, ExpressionContext context) {
+        return computeBigQueryScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
+    }
+
     public Void visitLogicalIntersect(LogicalIntersectOperator node, ExpressionContext context) {
         return computeIntersectNode(node, context, node.getOutputColumnRefOp(), node.getChildOutputColumns());
     }

@@ -1517,6 +1517,7 @@ public class PlanFragmentBuilder {
         }
 
         public PlanFragment visitPhysicalBigQueryScan(OptExpression optExpression, ExecPlan context) {
+            PhysicalBigQueryScanOperator node = (PhysicalBigQueryScanOperator) optExpression.getOp();
 
             Table referenceTable = node.getTable();
             context.getDescTbl().addReferencedTable(referenceTable);
@@ -2977,7 +2978,6 @@ public class PlanFragmentBuilder {
 
         @Override
         public PlanFragment visitPhysicalNestLoopJoin(OptExpression optExpr, ExecPlan context) {
-            PhysicalBigQueryScanOperator node = (PhysicalBigQueryScanOperator) optExpression.getOp();
             PhysicalJoinOperator node = (PhysicalJoinOperator) optExpr.getOp();
             PlanFragment leftFragment = visit(optExpr.inputAt(0), context);
             leftFragment.getPlanRoot().forceCollectExecStats();
