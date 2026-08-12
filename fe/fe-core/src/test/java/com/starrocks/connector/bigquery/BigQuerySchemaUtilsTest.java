@@ -14,12 +14,6 @@
 
 package com.starrocks.connector.bigquery;
 
-import static com.starrocks.type.BooleanType.BOOLEAN;
-import static com.starrocks.type.DateType.DATE;
-import static com.starrocks.type.DateType.DATETIME;
-import static com.starrocks.type.FloatType.DOUBLE;
-import static com.starrocks.type.IntegerType.BIGINT;
-
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.Schema;
@@ -32,8 +26,13 @@ import com.starrocks.type.Type;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-
 import java.util.List;
+
+import static com.starrocks.type.BooleanType.BOOLEAN;
+import static com.starrocks.type.DateType.DATE;
+import static com.starrocks.type.DateType.DATETIME;
+import static com.starrocks.type.FloatType.DOUBLE;
+import static com.starrocks.type.IntegerType.BIGINT;
 
 public class BigQuerySchemaUtilsTest {
 
