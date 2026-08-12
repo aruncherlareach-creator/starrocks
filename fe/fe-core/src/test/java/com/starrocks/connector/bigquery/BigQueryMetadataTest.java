@@ -24,6 +24,7 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.StandardTableDefinition;
+import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
@@ -95,7 +96,7 @@ public class BigQueryMetadataTest {
         );
         StandardTableDefinition def = StandardTableDefinition.of(schema);
 
-        TableInfo tableInfo = mock(TableInfo.class);
+        Table tableInfo = mock(Table.class);
         when(tableInfo.getDefinition()).thenReturn(def);
         when(tableInfo.getCreationTime()).thenReturn(1000L);
 
@@ -116,7 +117,7 @@ public class BigQueryMetadataTest {
         when(viewDef.getType()).thenReturn(TableDefinition.Type.VIEW);
         when(viewDef.getSchema()).thenReturn(schema);
 
-        TableInfo tableInfo = mock(TableInfo.class);
+        Table tableInfo = mock(Table.class);
         when(tableInfo.getDefinition()).thenReturn(viewDef);
         when(tableInfo.getCreationTime()).thenReturn(1000L);
 
@@ -141,7 +142,7 @@ public class BigQueryMetadataTest {
         when(viewDef.getType()).thenReturn(TableDefinition.Type.VIEW);
         when(viewDef.getSchema()).thenReturn(Schema.of(Field.of("id", StandardSQLTypeName.INT64)));
 
-        TableInfo tableInfo = mock(TableInfo.class);
+        Table tableInfo = mock(Table.class);
         when(tableInfo.getDefinition()).thenReturn(viewDef);
         when(mockBigQuery.getTable(TableId.of("test-project", "ds", "v1"))).thenReturn(tableInfo);
 

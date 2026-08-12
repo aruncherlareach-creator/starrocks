@@ -11,14 +11,14 @@
 FROM starrocks/dev-env-ubuntu:4.1.4 AS builder
 WORKDIR /starrocks
 COPY . .
-# H3 was added after dev-env:4.1.4 was cut — download and build it directly
-# rather than via build-thirdparty.sh (which re-runs download-thirdparty.sh
-# for all packages and can fail on pre-existing patch state).
+# H3 was added after dev-env:4.1.4 was cut — build it from the tarball
+# pre-downloaded by CI into docker/artifacts/ (avoids GitHub network access
+# from inside the Kaniko build pod on the Verizon network).
 RUN TP_INSTALL=/var/local/thirdparty/installed && \
     TP_SRC=/var/local/thirdparty/src && \
     mkdir -p "$TP_SRC" && \
+    cp /starrocks/docker/artifacts/h3-4.1.0.tar.gz "$TP_SRC/h3-4.1.0.tar.gz" && \
     cd "$TP_SRC" && \
-    wget -q https://github.com/uber/h3/archive/refs/tags/v4.1.0.tar.gz -O h3-4.1.0.tar.gz && \
     tar xzf h3-4.1.0.tar.gz && \
     mkdir -p h3-4.1.0/build && \
     cd h3-4.1.0/build && \

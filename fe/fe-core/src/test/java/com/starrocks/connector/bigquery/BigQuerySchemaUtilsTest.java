@@ -26,6 +26,12 @@ import com.starrocks.type.Type;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import static com.starrocks.type.BooleanType.BOOLEAN;
+import static com.starrocks.type.DateType.DATE;
+import static com.starrocks.type.DateType.DATETIME;
+import static com.starrocks.type.FloatType.DOUBLE;
+import static com.starrocks.type.IntegerType.BIGINT;
+
 import java.util.List;
 
 public class BigQuerySchemaUtilsTest {
@@ -45,21 +51,21 @@ public class BigQuerySchemaUtilsTest {
         Schema schema = Schema.of(field("id", StandardSQLTypeName.INT64));
         List<Column> cols = BigQuerySchemaUtils.toStarRocksColumns(schema);
         Assertions.assertEquals(1, cols.size());
-        Assertions.assertEquals(Type.BIGINT, cols.get(0).getType());
+        Assertions.assertEquals(BIGINT, cols.get(0).getType());
     }
 
     @Test
     public void testFloat64MapsToDouble() {
         Schema schema = Schema.of(field("val", StandardSQLTypeName.FLOAT64));
         List<Column> cols = BigQuerySchemaUtils.toStarRocksColumns(schema);
-        Assertions.assertEquals(Type.DOUBLE, cols.get(0).getType());
+        Assertions.assertEquals(DOUBLE, cols.get(0).getType());
     }
 
     @Test
     public void testBoolMapsToBoolean() {
         Schema schema = Schema.of(field("flag", StandardSQLTypeName.BOOL));
         List<Column> cols = BigQuerySchemaUtils.toStarRocksColumns(schema);
-        Assertions.assertEquals(Type.BOOLEAN, cols.get(0).getType());
+        Assertions.assertEquals(BOOLEAN, cols.get(0).getType());
     }
 
     @Test
@@ -73,14 +79,14 @@ public class BigQuerySchemaUtilsTest {
     public void testDateMapsToDate() {
         Schema schema = Schema.of(field("dt", StandardSQLTypeName.DATE));
         List<Column> cols = BigQuerySchemaUtils.toStarRocksColumns(schema);
-        Assertions.assertEquals(Type.DATE, cols.get(0).getType());
+        Assertions.assertEquals(DATE, cols.get(0).getType());
     }
 
     @Test
     public void testTimestampMapsToDatetime() {
         Schema schema = Schema.of(field("ts", StandardSQLTypeName.TIMESTAMP));
         List<Column> cols = BigQuerySchemaUtils.toStarRocksColumns(schema);
-        Assertions.assertEquals(Type.DATETIME, cols.get(0).getType());
+        Assertions.assertEquals(DATETIME, cols.get(0).getType());
     }
 
     @Test

@@ -47,6 +47,8 @@ docker-build-be:
   before_script:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${EDGEAI_CI_ARTIFACTORY_HOSTNAME}\":{\"auth\":\"$(echo -n ${EDGEAI_CI_ARTIFACTORY_USERNAME}:${EDGEAI_CI_ARTIFACTORY_PASSWORD} | base64 | tr -d '\n')\"},\"gitlab.verizon.com:4567\":{\"auth\":\"$(echo -n gitlab-ci-token:${CI_JOB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - mkdir -p "${CI_PROJECT_DIR}/docker/artifacts"
+    - wget -q --no-check-certificate https://github.com/uber/h3/archive/refs/tags/v4.1.0.tar.gz -O "${CI_PROJECT_DIR}/docker/artifacts/h3-4.1.0.tar.gz"
   script:
     - /kaniko/executor
         --context "${CI_PROJECT_DIR}"

@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 public class BigQueryScanTest extends BigQueryMockedBase {
 
@@ -52,8 +53,8 @@ public class BigQueryScanTest extends BigQueryMockedBase {
 
     static Map<ColumnRefOperator, Column> scanColumnMap = new HashMap<>() {
         {
-            put(idColumnRef, new Column("id", com.starrocks.catalog.Type.BIGINT));
-            put(nameColumnRef, new Column("name", com.starrocks.catalog.ScalarType.createDefaultCatalogString()));
+            put(idColumnRef, new Column("id", com.starrocks.type.IntegerType.BIGINT));
+            put(nameColumnRef, new Column("name", com.starrocks.type.TypeFactory.createDefaultCatalogString()));
         }
     };
 
@@ -151,13 +152,13 @@ public class BigQueryScanTest extends BigQueryMockedBase {
     @Test
     public void testBigQueryScanNodeSetupScanRangeLocations() {
         // Build a minimal TupleDescriptor pointing at bigQueryTable
-        com.starrocks.analysis.DescriptorTable descTable = new com.starrocks.analysis.DescriptorTable();
-        com.starrocks.analysis.TupleDescriptor tupleDesc = descTable.createTupleDescriptor();
+        com.starrocks.planner.DescriptorTable descTable = new com.starrocks.planner.DescriptorTable();
+        com.starrocks.planner.TupleDescriptor tupleDesc = descTable.createTupleDescriptor();
         tupleDesc.setTable(bigQueryTable);
 
         // Add slot descriptors for id and name
         for (Column col : bigQueryTable.getFullSchema()) {
-            com.starrocks.analysis.SlotDescriptor slot = descTable.addSlotDescriptor(tupleDesc);
+            com.starrocks.planner.SlotDescriptor slot = descTable.addSlotDescriptor(tupleDesc);
             slot.setColumn(col);
             slot.setIsNullable(true);
         }
@@ -189,8 +190,8 @@ public class BigQueryScanTest extends BigQueryMockedBase {
         // When getRemoteFiles returns empty, scan ranges should be empty too
         when(metadataMgr.getRemoteFiles(any(), any())).thenReturn(ImmutableList.of());
 
-        com.starrocks.analysis.DescriptorTable descTable = new com.starrocks.analysis.DescriptorTable();
-        com.starrocks.analysis.TupleDescriptor tupleDesc = descTable.createTupleDescriptor();
+        com.starrocks.planner.DescriptorTable descTable = new com.starrocks.planner.DescriptorTable();
+        com.starrocks.planner.TupleDescriptor tupleDesc = descTable.createTupleDescriptor();
         tupleDesc.setTable(bigQueryTable);
         tupleDesc.computeMemLayout();
 
