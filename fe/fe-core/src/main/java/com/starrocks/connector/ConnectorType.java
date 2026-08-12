@@ -44,6 +44,7 @@ public enum ConnectorType {
     ODPS("odps", OdpsConnector.class, null),
     KUDU("kudu", KuduConnector.class, null),
     UNIFIED("unified", UnifiedConnector.class, null),
+    BIGQUERY("bigquery", BigQueryConnector.class, null);
 
     public static final Set<ConnectorType> SUPPORT_TYPE_SET = EnumSet.of(
             ES,
@@ -95,4 +96,3 @@ public enum ConnectorType {
     }
 
 }
-    BIGQUERY("bigquery", BigQueryConnector.class, null);

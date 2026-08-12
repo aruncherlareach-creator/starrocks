@@ -719,6 +719,7 @@ public class RelationTransformer implements AstVisitorExtendInterface<LogicalPla
             scanOperator = new LogicalOdpsScanOperator(node.getTable(), colRefToColumnMetaMapBuilder.build(),
                     columnMetaToColRefMap, Operator.DEFAULT_LIMIT, null);
         } else if (Table.TableType.BIGQUERY.equals(node.getTable().getType())) {
+            scanOperator = new LogicalBigQueryScanOperator(node.getTable(), colRefToColumnMetaMapBuilder.build(),
                     columnMetaToColRefMap, Operator.DEFAULT_LIMIT, null);
         } else if (Table.TableType.METADATA.equals(node.getTable().getType())) {
             MetadataTable metadataTable = (MetadataTable) node.getTable();
@@ -1662,4 +1663,3 @@ public class RelationTransformer implements AstVisitorExtendInterface<LogicalPla
                         (existing, replacement) -> existing));
     }
 }
-            scanOperator = new LogicalBigQueryScanOperator(node.getTable(), colRefToColumnMetaMapBuilder.build(),
