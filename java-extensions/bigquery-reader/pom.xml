@@ -14,7 +14,7 @@
     <properties>
         <java-extensions.home>${basedir}/../</java-extensions.home>
         <bigquery.version>2.41.0</bigquery.version>
-        <bigquery-storage.version>3.9.0</bigquery-storage.version>
+        <bigquery-storage.version>3.6.1</bigquery-storage.version>
     </properties>
 
     <dependencies>
@@ -48,7 +48,7 @@
         <!-- BigQuery Storage Read API (Arrow streams) -->
         <dependency>
             <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-bigquery-storage</artifactId>
+            <artifactId>google-cloud-bigquerystorage</artifactId>
             <version>${bigquery-storage.version}</version>
         </dependency>
 
