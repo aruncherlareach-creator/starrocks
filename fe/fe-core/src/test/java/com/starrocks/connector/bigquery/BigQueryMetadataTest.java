@@ -15,7 +15,7 @@
 package com.starrocks.connector.bigquery;
 
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.Page;
+import com.google.api.gax.paging.Page;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Dataset;
 import com.google.cloud.bigquery.DatasetId;
@@ -33,9 +33,9 @@ import com.google.cloud.bigquery.storage.v1.ReadStream;
 import com.starrocks.catalog.BigQueryTable;
 import com.starrocks.connector.GetRemoteFilesParams;
 import com.starrocks.connector.RemoteFileInfo;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -60,7 +60,7 @@ public class BigQueryMetadataTest {
 
     private BigQueryMetadata metadata;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         Map<String, String> props = new HashMap<>();
@@ -81,9 +81,9 @@ public class BigQueryMetadataTest {
         when(mockBigQuery.listDatasets("test-project")).thenReturn(page);
 
         List<String> names = metadata.listDbNames(null);
-        Assert.assertEquals(2, names.size());
-        Assert.assertTrue(names.contains("dataset1"));
-        Assert.assertTrue(names.contains("dataset2"));
+        Assertions.assertEquals(2, names.size());
+        Assertions.assertTrue(names.contains("dataset1"));
+        Assertions.assertTrue(names.contains("dataset2"));
     }
 
     @Test
@@ -101,11 +101,11 @@ public class BigQueryMetadataTest {
         when(mockBigQuery.getTable(TableId.of("test-project", "ds", "tbl"))).thenReturn(tableInfo);
 
         com.starrocks.catalog.Table table = metadata.getTable(null, "ds", "tbl");
-        Assert.assertNotNull(table);
-        Assert.assertTrue(table instanceof BigQueryTable);
+        Assertions.assertNotNull(table);
+        Assertions.assertTrue(table instanceof BigQueryTable);
         BigQueryTable bqTable = (BigQueryTable) table;
-        Assert.assertFalse(bqTable.isView());
-        Assert.assertEquals(2, bqTable.getFullSchema().size());
+        Assertions.assertFalse(bqTable.isView());
+        Assertions.assertEquals(2, bqTable.getFullSchema().size());
     }
 
     @Test
@@ -122,10 +122,10 @@ public class BigQueryMetadataTest {
         when(mockBigQuery.getTable(TableId.of("test-project", "ds", "my_view"))).thenReturn(tableInfo);
 
         com.starrocks.catalog.Table table = metadata.getTable(null, "ds", "my_view");
-        Assert.assertNotNull(table);
-        Assert.assertTrue(table instanceof BigQueryTable);
+        Assertions.assertNotNull(table);
+        Assertions.assertTrue(table instanceof BigQueryTable);
         BigQueryTable bqTable = (BigQueryTable) table;
-        Assert.assertTrue(bqTable.isView());
+        Assertions.assertTrue(bqTable.isView());
     }
 
     @Test
@@ -145,7 +145,7 @@ public class BigQueryMetadataTest {
         when(mockBigQuery.getTable(TableId.of("test-project", "ds", "v1"))).thenReturn(tableInfo);
 
         com.starrocks.catalog.Table result = metaNoViews.getTable(null, "ds", "v1");
-        Assert.assertNull(result);
+        Assertions.assertNull(result);
     }
 
     @Test
@@ -169,12 +169,12 @@ public class BigQueryMetadataTest {
                 .build();
 
         List<RemoteFileInfo> infos = metadata.getRemoteFiles(bqTable, params);
-        Assert.assertEquals(1, infos.size());
-        Assert.assertEquals(3, infos.get(0).getFiles().size());
+        Assertions.assertEquals(1, infos.size());
+        Assertions.assertEquals(3, infos.get(0).getFiles().size());
 
         BigQueryRemoteFileDesc desc = (BigQueryRemoteFileDesc) infos.get(0).getFiles().get(0);
-        Assert.assertEquals("projects/test-project/locations/us/sessions/abc123", desc.getReadSessionName());
-        Assert.assertEquals(0, desc.getStreamIndex());
-        Assert.assertFalse(desc.isTempTable());
+        Assertions.assertEquals("projects/test-project/locations/us/sessions/abc123", desc.getReadSessionName());
+        Assertions.assertEquals(0, desc.getStreamIndex());
+        Assertions.assertFalse(desc.isTempTable());
     }
 }

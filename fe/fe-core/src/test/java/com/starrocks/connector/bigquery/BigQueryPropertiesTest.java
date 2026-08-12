@@ -15,8 +15,8 @@
 package com.starrocks.connector.bigquery;
 
 import com.starrocks.connector.exception.StarRocksConnectorException;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,9 +34,9 @@ public class BigQueryPropertiesTest {
         Map<String, String> props = new HashMap<>();
         try {
             new BigQueryProperties(props);
-            Assert.fail("Expected StarRocksConnectorException");
+            Assertions.fail("Expected StarRocksConnectorException");
         } catch (StarRocksConnectorException e) {
-            Assert.assertTrue(e.getMessage().contains(BigQueryProperties.PROJECT_ID));
+            Assertions.assertTrue(e.getMessage().contains(BigQueryProperties.PROJECT_ID));
         }
     }
 
@@ -44,7 +44,7 @@ public class BigQueryPropertiesTest {
     public void testValidWithNoCredentials() {
         // ADC is the implicit default when no credentials are provided.
         BigQueryProperties p = new BigQueryProperties(baseProps());
-        Assert.assertEquals("my-project", p.get(BigQueryProperties.PROJECT_ID));
+        Assertions.assertEquals("my-project", p.get(BigQueryProperties.PROJECT_ID));
     }
 
     @Test
@@ -52,7 +52,7 @@ public class BigQueryPropertiesTest {
         Map<String, String> props = baseProps();
         props.put(BigQueryProperties.CREDENTIALS_JSON, "{\"type\":\"service_account\"}");
         BigQueryProperties p = new BigQueryProperties(props);
-        Assert.assertNotNull(p.get(BigQueryProperties.CREDENTIALS_JSON));
+        Assertions.assertNotNull(p.get(BigQueryProperties.CREDENTIALS_JSON));
     }
 
     @Test
@@ -60,7 +60,7 @@ public class BigQueryPropertiesTest {
         Map<String, String> props = baseProps();
         props.put(BigQueryProperties.CREDENTIALS_FILE, "/path/to/sa.json");
         BigQueryProperties p = new BigQueryProperties(props);
-        Assert.assertEquals("/path/to/sa.json", p.get(BigQueryProperties.CREDENTIALS_FILE));
+        Assertions.assertEquals("/path/to/sa.json", p.get(BigQueryProperties.CREDENTIALS_FILE));
     }
 
     @Test
@@ -70,20 +70,20 @@ public class BigQueryPropertiesTest {
         props.put(BigQueryProperties.CREDENTIALS_FILE, "/path/to/sa.json");
         try {
             new BigQueryProperties(props);
-            Assert.fail("Expected StarRocksConnectorException");
+            Assertions.fail("Expected StarRocksConnectorException");
         } catch (StarRocksConnectorException e) {
-            Assert.assertTrue(e.getMessage().contains(BigQueryProperties.CREDENTIALS_JSON));
+            Assertions.assertTrue(e.getMessage().contains(BigQueryProperties.CREDENTIALS_JSON));
         }
     }
 
     @Test
     public void testDefaultValues() {
         BigQueryProperties p = new BigQueryProperties(baseProps());
-        Assert.assertEquals("US", p.get(BigQueryProperties.LOCATION));
-        Assert.assertEquals("0", p.get(BigQueryProperties.MAX_STREAMS));
-        Assert.assertEquals("true", p.get(BigQueryProperties.VIEW_ENABLED));
-        Assert.assertEquals("_bq_tmp_sr_", p.get(BigQueryProperties.VIEW_MATERIALIZE_DATASET));
-        Assert.assertEquals("300", p.get(BigQueryProperties.VIEW_JOB_TIMEOUT_SECONDS));
+        Assertions.assertEquals("US", p.get(BigQueryProperties.LOCATION));
+        Assertions.assertEquals("0", p.get(BigQueryProperties.MAX_STREAMS));
+        Assertions.assertEquals("true", p.get(BigQueryProperties.VIEW_ENABLED));
+        Assertions.assertEquals("_bq_tmp_sr_", p.get(BigQueryProperties.VIEW_MATERIALIZE_DATASET));
+        Assertions.assertEquals("300", p.get(BigQueryProperties.VIEW_JOB_TIMEOUT_SECONDS));
     }
 
     @Test
@@ -92,7 +92,7 @@ public class BigQueryPropertiesTest {
         props.put(BigQueryProperties.VIEW_ENABLED, "false");
         props.put(BigQueryProperties.VIEW_JOB_TIMEOUT_SECONDS, "600");
         BigQueryProperties p = new BigQueryProperties(props);
-        Assert.assertFalse(p.getBoolean(BigQueryProperties.VIEW_ENABLED));
-        Assert.assertEquals(600L, p.getLong(BigQueryProperties.VIEW_JOB_TIMEOUT_SECONDS));
+        Assertions.assertFalse(p.getBoolean(BigQueryProperties.VIEW_ENABLED));
+        Assertions.assertEquals(600L, p.getLong(BigQueryProperties.VIEW_JOB_TIMEOUT_SECONDS));
     }
 }
