@@ -367,6 +367,13 @@ public:
     bool has_partition() const override { return false; }
 };
 
+class BigQueryTableDescriptor : public HiveTableDescriptor {
+public:
+    BigQueryTableDescriptor(const TTableDescriptor& tdesc, ObjectPool* pool);
+    ~BigQueryTableDescriptor() override = default;
+    bool has_partition() const override { return false; }
+};
+
 // ===========================================
 
 class OlapTableDescriptor : public TableDescriptor {

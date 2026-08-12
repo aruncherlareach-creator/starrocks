@@ -399,6 +399,9 @@ const std::string& OdpsTableDescriptor::get_time_zone() const {
 KuduTableDescriptor::KuduTableDescriptor(const TTableDescriptor& tdesc, ObjectPool* pool)
         : HiveTableDescriptor(tdesc, pool) {}
 
+BigQueryTableDescriptor::BigQueryTableDescriptor(const TTableDescriptor& tdesc, ObjectPool* pool)
+        : HiveTableDescriptor(tdesc, pool) {}
+
 HiveTableDescriptor::HiveTableDescriptor(const TTableDescriptor& tdesc, ObjectPool* pool) : TableDescriptor(tdesc) {}
 
 bool HiveTableDescriptor::is_partition_col(const SlotDescriptor* slot) const {
@@ -795,9 +798,7 @@ Status DescriptorTbl::create(RuntimeState* state, ObjectPool* pool, const TDescr
             break;
         }
         case TTableType::BIGQUERY_TABLE: {
-            // BigQuery uses the standard HDFS table descriptor; all scan params are
-            // carried in THdfsScanRange.bigquery_split_infos by the FE scan node.
-            desc = pool->add(new HiveTableDescriptor(tdesc, pool));
+            desc = pool->add(new BigQueryTableDescriptor(tdesc, pool));
             break;
         }
         case TTableType::LOGICAL_ICEBERG_METADATA_TABLE:
