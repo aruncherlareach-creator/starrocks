@@ -14,8 +14,9 @@
 
 package com.starrocks.connector.bigquery;
 
-import com.google.auth.oauth2.GoogleCredentials;
+
 import com.google.api.gax.paging.Page;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Dataset;
 import com.google.cloud.bigquery.DatasetId;
