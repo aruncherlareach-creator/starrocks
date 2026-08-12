@@ -30,7 +30,6 @@ import com.starrocks.connector.partitiontraits.DeltaLakePartitionTraits;
 import com.starrocks.connector.partitiontraits.HivePartitionTraits;
 import com.starrocks.connector.partitiontraits.HudiPartitionTraits;
 import com.starrocks.connector.partitiontraits.IcebergPartitionTraits;
-${content}
 import com.starrocks.connector.partitiontraits.BigQueryPartitionTraits;
 import com.starrocks.connector.partitiontraits.JDBCPartitionTraits;
 import com.starrocks.connector.partitiontraits.KuduPartitionTraits;
