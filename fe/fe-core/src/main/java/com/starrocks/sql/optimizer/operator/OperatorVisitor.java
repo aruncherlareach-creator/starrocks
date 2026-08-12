@@ -36,8 +36,9 @@ import com.starrocks.sql.optimizer.operator.logical.LogicalJDBCScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalJoinOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalKuduScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalLimitOperator;
-import com.starrocks.sql.optimizer.operator.logical.LogicalMetaScanOperator;
+${content}
 import com.starrocks.sql.optimizer.operator.logical.LogicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.logical.LogicalMetaScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalMysqlScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalOdpsScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalOlapScanOperator;
@@ -84,8 +85,9 @@ import com.starrocks.sql.optimizer.operator.physical.PhysicalLookUpOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalMergeJoinOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalMetaScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalMysqlScanOperator;
-import com.starrocks.sql.optimizer.operator.physical.PhysicalNestLoopJoinOperator;
+${content}
 import com.starrocks.sql.optimizer.operator.physical.PhysicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.physical.PhysicalNestLoopJoinOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalNoCTEOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalOdpsScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalOlapScanOperator;

@@ -120,8 +120,9 @@ import com.starrocks.sql.optimizer.operator.logical.LogicalJDBCScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalJoinOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalKuduScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalLimitOperator;
-import com.starrocks.sql.optimizer.operator.logical.LogicalMetaScanOperator;
+${content}
 import com.starrocks.sql.optimizer.operator.logical.LogicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.logical.LogicalMetaScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalMysqlScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalOdpsScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalOlapScanOperator;

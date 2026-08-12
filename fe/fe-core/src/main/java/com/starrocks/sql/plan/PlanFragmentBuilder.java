@@ -93,8 +93,9 @@ import com.starrocks.planner.MergeJoinNode;
 import com.starrocks.planner.MetaScanNode;
 import com.starrocks.planner.MultiCastPlanFragment;
 import com.starrocks.planner.MysqlScanNode;
-import com.starrocks.planner.NestLoopJoinNode;
+${content}
 import com.starrocks.planner.BigQueryScanNode;
+import com.starrocks.planner.NestLoopJoinNode;
 import com.starrocks.planner.NoopSink;
 import com.starrocks.planner.OdpsScanNode;
 import com.starrocks.planner.OlapScanNode;
@@ -195,8 +196,9 @@ import com.starrocks.sql.optimizer.operator.physical.PhysicalKuduScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalLimitOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalLookUpOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalMergeJoinOperator;
-import com.starrocks.sql.optimizer.operator.physical.PhysicalMetaScanOperator;
+${content}
 import com.starrocks.sql.optimizer.operator.physical.PhysicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.physical.PhysicalMetaScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalMysqlScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalOdpsScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalOlapScanOperator;

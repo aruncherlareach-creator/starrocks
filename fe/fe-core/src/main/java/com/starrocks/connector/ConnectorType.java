@@ -21,8 +21,9 @@ import com.starrocks.connector.elasticsearch.EsConfig;
 import com.starrocks.connector.hive.HiveConnector;
 import com.starrocks.connector.hudi.HudiConnector;
 import com.starrocks.connector.iceberg.IcebergConnector;
-import com.starrocks.connector.jdbc.JDBCConnector;
+${content}
 import com.starrocks.connector.bigquery.BigQueryConnector;
+import com.starrocks.connector.jdbc.JDBCConnector;
 import com.starrocks.connector.kudu.KuduConnector;
 import com.starrocks.connector.odps.OdpsConnector;
 import com.starrocks.connector.paimon.PaimonConnector;
