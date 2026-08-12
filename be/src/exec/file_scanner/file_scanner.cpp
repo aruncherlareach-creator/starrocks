@@ -22,6 +22,7 @@
 #include "column/vectorized_fwd.h"
 #include "exec/file_scanner/avro_cpp_scanner.h"
 #include "exec/file_scanner/csv_scanner.h"
+#include "exec/file_scanner/json_scanner.h"
 #include "exec/file_scanner/orc_scanner.h"
 #include "exec/file_scanner/parquet_scanner.h"
 #include "fs/fs.h"
@@ -466,6 +467,10 @@ Status FileScanner::sample_schema(RuntimeState* state, const TBrokerScanRange& s
 
         case TFileFormatType::FORMAT_AVRO:
             p_scanner = std::make_unique<AvroCppScanner>(state, &profile, sample_range, &counter, true);
+            break;
+
+        case TFileFormatType::FORMAT_JSON:
+            p_scanner = std::make_unique<JsonScanner>(state, &profile, sample_range, &counter, true);
             break;
 
         default:
