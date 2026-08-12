@@ -71,10 +71,8 @@ public class BigQuerySchemaUtils {
         StandardSQLTypeName typeName = field.getType().getStandardType();
         switch (typeName) {
             case INT64:
-            case INTEGER:
                 return BIGINT;
             case FLOAT64:
-            case FLOAT:
                 return DOUBLE;
             case NUMERIC:
                 return TypeFactory.createUnifiedDecimalType(38, 9);
@@ -85,7 +83,6 @@ public class BigQuerySchemaUtils {
                 return TypeFactory.createUnifiedDecimalType(38, 38);
             }
             case BOOL:
-            case BOOLEAN:
                 return BOOLEAN;
             case STRING:
                 return TypeFactory.createDefaultCatalogString();
@@ -112,7 +109,7 @@ public class BigQuerySchemaUtils {
                     Type subType = convertField(subField);
                     srStructFields.add(new StructField(subField.getName().toLowerCase(), subType));
                 }
-                return new StructType(srStructFields);
+                return new StructType(srStructFields, true);
             }
             case RANGE:
                 return TypeFactory.createDefaultCatalogString();
