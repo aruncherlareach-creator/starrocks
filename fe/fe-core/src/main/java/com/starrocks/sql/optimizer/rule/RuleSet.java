@@ -36,8 +36,9 @@ import com.starrocks.sql.optimizer.rule.implementation.IcebergEqualityDeleteScan
 import com.starrocks.sql.optimizer.rule.implementation.IcebergMetadataScanImplementationRule;
 import com.starrocks.sql.optimizer.rule.implementation.IcebergScanImplementationRule;
 import com.starrocks.sql.optimizer.rule.implementation.IntersectImplementationRule;
-import com.starrocks.sql.optimizer.rule.implementation.JDBCScanImplementationRule;
+
 import com.starrocks.sql.optimizer.rule.implementation.BigQueryScanImplementationRule;
+import com.starrocks.sql.optimizer.rule.implementation.JDBCScanImplementationRule;
 import com.starrocks.sql.optimizer.rule.implementation.KuduScanImplementationRule;
 import com.starrocks.sql.optimizer.rule.implementation.LimitImplementationRule;
 import com.starrocks.sql.optimizer.rule.implementation.MergeJoinImplementationRule;
@@ -206,7 +207,6 @@ public class RuleSet {
             new DeltaLakeScanImplementationRule(),
             new PaimonScanImplementationRule(),
             new OdpsScanImplementationRule(),
-            new BigQueryScanImplementationRule(),
             new IcebergMetadataScanImplementationRule(),
             new KuduScanImplementationRule(),
             new SchemaScanImplementationRule(),
@@ -214,6 +214,7 @@ public class RuleSet {
             new EsScanImplementationRule(),
             new MetaScanImplementationRule(),
             new CacheStatsScanImplementationRule(),
+            new BigQueryScanImplementationRule(),
             new JDBCScanImplementationRule(),
             new TableFunctionTableScanImplementationRule(),
             new HashAggImplementationRule(),

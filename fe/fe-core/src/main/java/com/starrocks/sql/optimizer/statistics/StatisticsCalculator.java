@@ -84,8 +84,9 @@ import com.starrocks.sql.optimizer.operator.logical.LogicalHudiScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalIcebergEqualityDeleteScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalIcebergMetadataScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalIcebergScanOperator;
-import com.starrocks.sql.optimizer.operator.logical.LogicalIntersectOperator;
+
 import com.starrocks.sql.optimizer.operator.logical.LogicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.logical.LogicalIntersectOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalJDBCScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalJoinOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalKuduScanOperator;
@@ -126,8 +127,9 @@ import com.starrocks.sql.optimizer.operator.physical.PhysicalIcebergMetadataScan
 import com.starrocks.sql.optimizer.operator.physical.PhysicalIcebergScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalIntersectOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalJDBCScanOperator;
-import com.starrocks.sql.optimizer.operator.physical.PhysicalKuduScanOperator;
+
 import com.starrocks.sql.optimizer.operator.physical.PhysicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.physical.PhysicalKuduScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalLimitOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalMergeJoinOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalMetaScanOperator;
@@ -779,12 +781,10 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
     }
 
     @Override
-    public Void visitLogicalBigQueryScan(LogicalBigQueryScanOperator node, ExpressionContext context) {
         return computeBigQueryScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
     }
 
     @Override
-    public Void visitPhysicalBigQueryScan(PhysicalBigQueryScanOperator node, ExpressionContext context) {
         return computeBigQueryScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
     }
 
@@ -816,6 +816,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
     }
 
     @Override
+    public Void visitPhysicalBigQueryScan(PhysicalBigQueryScanOperator node, ExpressionContext context) {
     public Void visitPhysicalKuduScan(PhysicalKuduScanOperator node, ExpressionContext context) {
         return computeKuduScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
     }
@@ -1668,6 +1669,7 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
     }
 
     @Override
+    public Void visitLogicalBigQueryScan(LogicalBigQueryScanOperator node, ExpressionContext context) {
     public Void visitLogicalIntersect(LogicalIntersectOperator node, ExpressionContext context) {
         return computeIntersectNode(node, context, node.getOutputColumnRefOp(), node.getChildOutputColumns());
     }

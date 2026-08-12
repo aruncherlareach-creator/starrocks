@@ -115,8 +115,8 @@ import com.starrocks.sql.optimizer.operator.logical.LogicalHiveScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalHudiScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalIcebergMetadataScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalIcebergScanOperator;
-import com.starrocks.sql.optimizer.operator.logical.LogicalIntersectOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.logical.LogicalIntersectOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalJDBCScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalJoinOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalKuduScanOperator;
@@ -719,7 +719,6 @@ public class RelationTransformer implements AstVisitorExtendInterface<LogicalPla
             scanOperator = new LogicalOdpsScanOperator(node.getTable(), colRefToColumnMetaMapBuilder.build(),
                     columnMetaToColRefMap, Operator.DEFAULT_LIMIT, null);
         } else if (Table.TableType.BIGQUERY.equals(node.getTable().getType())) {
-            scanOperator = new LogicalBigQueryScanOperator(node.getTable(), colRefToColumnMetaMapBuilder.build(),
                     columnMetaToColRefMap, Operator.DEFAULT_LIMIT, null);
         } else if (Table.TableType.METADATA.equals(node.getTable().getType())) {
             MetadataTable metadataTable = (MetadataTable) node.getTable();
@@ -1663,3 +1662,4 @@ public class RelationTransformer implements AstVisitorExtendInterface<LogicalPla
                         (existing, replacement) -> existing));
     }
 }
+            scanOperator = new LogicalBigQueryScanOperator(node.getTable(), colRefToColumnMetaMapBuilder.build(),

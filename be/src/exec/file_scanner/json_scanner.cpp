@@ -359,8 +359,8 @@ Status JsonScanner::get_schema(std::vector<SlotDescriptor>* schema) {
         if (is_ndjson) {
             // iterate_many returns document_stream directly; errors surface as exceptions.
             // Use explicit iterator to match the pattern in JsonDocumentStreamParser.
-            auto doc_stream = simdjson_parser.iterate_many(buf.get(), static_cast<size_t>(bytes_read),
-                                                           static_cast<size_t>(capacity));
+            simdjson::ondemand::document_stream doc_stream = simdjson_parser.iterate_many(
+                    buf.get(), static_cast<size_t>(bytes_read), static_cast<size_t>(capacity));
             int64_t rows_sampled = 0;
             auto itr = doc_stream.begin();
             while (rows_sampled < sample_rows && itr != doc_stream.end()) {

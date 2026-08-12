@@ -88,8 +88,8 @@ import com.starrocks.planner.IntersectNode;
 import com.starrocks.planner.JDBCScanNode;
 import com.starrocks.planner.JoinNode;
 import com.starrocks.planner.KuduScanNode;
-import com.starrocks.planner.LookUpNode;
 import com.starrocks.planner.BigQueryScanNode;
+import com.starrocks.planner.LookUpNode;
 import com.starrocks.planner.MergeJoinNode;
 import com.starrocks.planner.MetaScanNode;
 import com.starrocks.planner.MultiCastPlanFragment;
@@ -190,8 +190,9 @@ import com.starrocks.sql.optimizer.operator.physical.PhysicalIcebergEqualityDele
 import com.starrocks.sql.optimizer.operator.physical.PhysicalIcebergMetadataScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalIcebergScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalJDBCScanOperator;
-import com.starrocks.sql.optimizer.operator.physical.PhysicalJoinOperator;
+
 import com.starrocks.sql.optimizer.operator.physical.PhysicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.physical.PhysicalJoinOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalKuduScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalLimitOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalLookUpOperator;
@@ -1516,7 +1517,6 @@ public class PlanFragmentBuilder {
         }
 
         public PlanFragment visitPhysicalBigQueryScan(OptExpression optExpression, ExecPlan context) {
-            PhysicalBigQueryScanOperator node = (PhysicalBigQueryScanOperator) optExpression.getOp();
 
             Table referenceTable = node.getTable();
             context.getDescTbl().addReferencedTable(referenceTable);
@@ -2977,6 +2977,7 @@ public class PlanFragmentBuilder {
 
         @Override
         public PlanFragment visitPhysicalNestLoopJoin(OptExpression optExpr, ExecPlan context) {
+            PhysicalBigQueryScanOperator node = (PhysicalBigQueryScanOperator) optExpression.getOp();
             PhysicalJoinOperator node = (PhysicalJoinOperator) optExpr.getOp();
             PlanFragment leftFragment = visit(optExpr.inputAt(0), context);
             leftFragment.getPlanRoot().forceCollectExecStats();
