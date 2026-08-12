@@ -14,13 +14,13 @@
 
 package com.starrocks.connector;
 
+import com.starrocks.connector.bigquery.BigQueryConnector;
 import com.starrocks.connector.config.ConnectorConfig;
 import com.starrocks.connector.delta.DeltaLakeConnector;
 import com.starrocks.connector.elasticsearch.ElasticsearchConnector;
 import com.starrocks.connector.elasticsearch.EsConfig;
 import com.starrocks.connector.hive.HiveConnector;
 import com.starrocks.connector.hudi.HudiConnector;
-import com.starrocks.connector.bigquery.BigQueryConnector;
 import com.starrocks.connector.iceberg.IcebergConnector;
 import com.starrocks.connector.jdbc.JDBCConnector;
 import com.starrocks.connector.kudu.KuduConnector;

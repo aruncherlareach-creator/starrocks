@@ -25,11 +25,11 @@ import com.starrocks.catalog.Table;
 import com.starrocks.common.AnalysisException;
 import com.starrocks.common.Config;
 import com.starrocks.common.tvr.TvrVersionRange;
+import com.starrocks.connector.partitiontraits.BigQueryPartitionTraits;
 import com.starrocks.connector.partitiontraits.CachedPartitionTraits;
 import com.starrocks.connector.partitiontraits.DeltaLakePartitionTraits;
 import com.starrocks.connector.partitiontraits.HivePartitionTraits;
 import com.starrocks.connector.partitiontraits.HudiPartitionTraits;
-import com.starrocks.connector.partitiontraits.BigQueryPartitionTraits;
 import com.starrocks.connector.partitiontraits.IcebergPartitionTraits;
 import com.starrocks.connector.partitiontraits.JDBCPartitionTraits;
 import com.starrocks.connector.partitiontraits.KuduPartitionTraits;
@@ -77,6 +77,7 @@ public abstract class ConnectorPartitionTraits {
                     .put(Table.TableType.KUDU, KuduPartitionTraits::new)
                     .put(Table.TableType.JDBC, JDBCPartitionTraits::new)
                     .put(Table.TableType.DELTALAKE, DeltaLakePartitionTraits::new)
+                    .put(Table.TableType.BIGQUERY, BigQueryPartitionTraits::new)
                     .build();
 
     protected Table table;
@@ -275,4 +276,3 @@ public abstract class ConnectorPartitionTraits {
         return queryMVRewrite;
     }
 }
-                    .put(Table.TableType.BIGQUERY, BigQueryPartitionTraits::new)
