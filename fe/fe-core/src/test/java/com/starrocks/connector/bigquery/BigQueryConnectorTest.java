@@ -15,7 +15,6 @@
 package com.starrocks.connector.bigquery;
 
 import com.starrocks.connector.ConnectorContext;
-import com.starrocks.connector.ConnectorMetadata;
 import com.starrocks.connector.ConnectorType;
 import com.starrocks.connector.exception.StarRocksConnectorException;
 import org.junit.jupiter.api.Assertions;

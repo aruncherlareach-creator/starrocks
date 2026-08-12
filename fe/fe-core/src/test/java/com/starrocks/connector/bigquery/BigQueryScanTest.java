@@ -31,7 +31,6 @@ import com.starrocks.sql.optimizer.operator.scalar.BinaryPredicateOperator;
 import com.starrocks.sql.optimizer.operator.scalar.ColumnRefOperator;
 import com.starrocks.sql.optimizer.operator.scalar.ConstantOperator;
 import com.starrocks.sql.optimizer.rule.implementation.BigQueryScanImplementationRule;
-import com.starrocks.thrift.TNetworkAddress;
 import com.starrocks.thrift.TTableType;
 import mockit.Mocked;
 import org.junit.jupiter.api.Assertions;
@@ -250,7 +249,7 @@ public class BigQueryScanTest extends BigQueryMockedBase {
     // ---- Helper ----
 
     private static com.google.common.collect.ImmutableList<com.starrocks.connector.RemoteFileInfo>
-    buildRestoredFileInfo() {
+            buildRestoredFileInfo() {
         Map<String, String> params = new HashMap<>();
         params.put("project_id", PROJECT_ID);
         params.put("dataset_id", DATASET_ID);
