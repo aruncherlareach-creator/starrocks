@@ -865,7 +865,7 @@ under the License.
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-bigquery-storage</artifactId>
+            <artifactId>google-cloud-bigquerystorage</artifactId>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.owasp.encoder/encoder -->
