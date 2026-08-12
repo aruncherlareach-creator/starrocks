@@ -18,7 +18,6 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
-
 import com.starrocks.catalog.Column;
 import com.starrocks.type.ArrayType;
 import com.starrocks.type.ScalarType;
