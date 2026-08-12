@@ -358,15 +358,18 @@ Status JsonScanner::get_schema(std::vector<SlotDescriptor>* schema) {
     try {
         if (is_ndjson) {
             // iterate_many returns document_stream directly; errors surface as exceptions.
+            // Use explicit iterator to match the pattern in JsonDocumentStreamParser.
             auto doc_stream = simdjson_parser.iterate_many(buf.get(), static_cast<size_t>(bytes_read),
                                                            static_cast<size_t>(capacity));
             int64_t rows_sampled = 0;
-            for (simdjson::ondemand::document_reference doc : doc_stream) {
-                if (rows_sampled >= sample_rows) break;
+            auto itr = doc_stream.begin();
+            while (rows_sampled < sample_rows && itr != doc_stream.end()) {
+                simdjson::ondemand::document_reference doc = *itr;
                 if (!_root_paths.empty()) {
                     simdjson::ondemand::object root_obj = doc.get_object();
                     simdjson::ondemand::value root_val;
-                    if (JsonFunctions::extract_from_object(root_obj, _root_paths, &root_val) != Status::OK()) {
+                    if (!JsonFunctions::extract_from_object(root_obj, _root_paths, &root_val).ok()) {
+                        ++itr;
                         continue;
                     }
                     simdjson::ondemand::object sub_obj = root_val.get_object();
@@ -375,6 +378,7 @@ Status JsonScanner::get_schema(std::vector<SlotDescriptor>* schema) {
                     simdjson::ondemand::object obj = doc.get_object();
                     collect_fields(obj);
                 }
+                ++itr;
                 rows_sampled++;
             }
         } else {
@@ -388,7 +392,7 @@ Status JsonScanner::get_schema(std::vector<SlotDescriptor>* schema) {
                 if (!_root_paths.empty()) {
                     simdjson::ondemand::object elem_obj = elem.get_object();
                     simdjson::ondemand::value root_val;
-                    if (JsonFunctions::extract_from_object(elem_obj, _root_paths, &root_val) != Status::OK()) {
+                    if (!JsonFunctions::extract_from_object(elem_obj, _root_paths, &root_val).ok()) {
                         continue;
                     }
                     simdjson::ondemand::object sub_obj = root_val.get_object();
