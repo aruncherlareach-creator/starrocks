@@ -191,7 +191,6 @@ import com.starrocks.sql.optimizer.operator.physical.PhysicalIcebergEqualityDele
 import com.starrocks.sql.optimizer.operator.physical.PhysicalIcebergMetadataScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalIcebergScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalJDBCScanOperator;
-
 import com.starrocks.sql.optimizer.operator.physical.PhysicalJoinOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalKuduScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalLimitOperator;
