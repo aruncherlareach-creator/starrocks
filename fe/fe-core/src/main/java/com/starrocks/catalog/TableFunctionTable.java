@@ -689,6 +689,7 @@ public class TableFunctionTable extends Table {
         params.setUse_broker(false);
         params.setSrc_slot_ids(new ArrayList<>());
         params.setProperties(properties);
+        params.setJson_file_size_limit(com.starrocks.common.Config.json_file_size_limit);
         params.setSchema_sample_file_count(autoDetectSampleFiles);
         params.setSchema_sample_file_row_count(autoDetectSampleRows);
         params.setSchema_sample_types(autoDetectTypes);
