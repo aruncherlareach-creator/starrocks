@@ -263,10 +263,18 @@ public class BigQueryMetadata implements ConnectorMetadata {
             requestBuilder.setPreferredMinStreamCount(preferredMinStreams);
         }
 
-        ReadSession session = readClient.createReadSession(requestBuilder.build());
+        ReadSession session;
+        try {
+            session = readClient.createReadSession(requestBuilder.build());
+        } catch (Exception e) {
+            throw new StarRocksConnectorException(
+                    "BigQuery Storage Read API call failed for table " + tablePath +
+                    ". Check bigquery.storage.endpoint if using a private endpoint. Error: " + e.getMessage(), e);
+        }
 
         if (session.getStreamsList().isEmpty()) {
-            LOG.info("BigQuery read session returned 0 streams for table {}", tablePath);
+            LOG.warn("BigQuery read session returned 0 streams for table {} — table may be empty or " +
+                    "the Storage Read API may require bigquery.storage.endpoint to be set", tablePath);
             return Collections.emptyList();
         }
 

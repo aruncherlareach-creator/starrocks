@@ -47,6 +47,12 @@ public class BigQueryProperties {
     public static final String AUTH_TYPE_SERVICE_ACCOUNT_FILE = "service_account_file";
     public static final String AUTH_TYPE_APPLICATION_DEFAULT  = "application_default";
 
+    // ---- Endpoint overrides (optional; for private / VPC-SC endpoints) ----
+    /** Override for the BigQuery Storage Read API gRPC endpoint, e.g. bigquerystorage-vzit.p.googleapis.com:443 */
+    public static final String STORAGE_ENDPOINT = "bigquery.storage.endpoint";
+    /** Override for the BigQuery REST API endpoint, e.g. https://bigquery-vzit.p.googleapis.com */
+    public static final String BQ_ENDPOINT      = "bigquery.api.endpoint";
+
     // ---- Optional scan/catalog settings ----
     /** Comma-separated list of dataset names to expose. Empty = all datasets. */
     public static final String DATASET_FILTER         = "bigquery.dataset.filter";

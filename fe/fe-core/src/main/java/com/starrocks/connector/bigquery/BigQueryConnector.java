@@ -86,19 +86,25 @@ public class BigQueryConnector implements Connector {
 
     private BigQuery buildBigQueryClient() {
         String projectId = properties.get(BigQueryProperties.PROJECT_ID);
-        return BigQueryOptions.newBuilder()
+        String bqEndpoint = properties.get(BigQueryProperties.BQ_ENDPOINT);
+        BigQueryOptions.Builder builder = BigQueryOptions.newBuilder()
                 .setProjectId(projectId)
-                .setCredentials(credentials)
-                .build()
-                .getService();
+                .setCredentials(credentials);
+        if (bqEndpoint != null && !bqEndpoint.isEmpty()) {
+            builder.setHost(bqEndpoint);
+        }
+        return builder.build().getService();
     }
 
     private BigQueryReadClient buildReadClient() {
         try {
-            return BigQueryReadClient.create(
-                    BigQueryReadSettings.newBuilder()
-                            .setCredentialsProvider(() -> credentials)
-                            .build());
+            BigQueryReadSettings.Builder settingsBuilder = BigQueryReadSettings.newBuilder()
+                    .setCredentialsProvider(() -> credentials);
+            String storageEndpoint = properties.get(BigQueryProperties.STORAGE_ENDPOINT);
+            if (storageEndpoint != null && !storageEndpoint.isEmpty()) {
+                settingsBuilder.setEndpoint(storageEndpoint);
+            }
+            return BigQueryReadClient.create(settingsBuilder.build());
         } catch (IOException e) {
             throw new StarRocksConnectorException("Failed to create BigQuery Storage Read client: " + e.getMessage(), e);
         }
