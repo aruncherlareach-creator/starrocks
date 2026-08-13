@@ -265,16 +265,23 @@ public class BigQueryMetadata implements ConnectorMetadata {
 
         ReadSession session;
         try {
-            session = readClient.createReadSession(requestBuilder.build());
+            CreateReadSessionRequest req = requestBuilder.build();
+            LOG.info("BigQuery createReadSession: parent={}, table={}, preferredMinStreams={}",
+                    req.getParent(), tablePath, req.getPreferredMinStreamCount());
+            session = readClient.createReadSession(req);
+            LOG.info("BigQuery createReadSession response: name={}, streams={}, estimatedRows={}",
+                    session.getName(), session.getStreamsCount(), session.getEstimatedRowCount());
         } catch (Exception e) {
             throw new StarRocksConnectorException(
                     "BigQuery Storage Read API call failed for table " + tablePath +
-                    ". Check bigquery.storage.endpoint if using a private endpoint. Error: " + e.getMessage(), e);
+                    ". Error: " + e.getMessage(), e);
         }
 
         if (session.getStreamsList().isEmpty()) {
-            LOG.warn("BigQuery read session returned 0 streams for table {} — table may be empty or " +
-                    "the Storage Read API may require bigquery.storage.endpoint to be set", tablePath);
+            LOG.warn("BigQuery read session returned 0 streams for table {} (estimatedRows={}, rowRestriction='{}')" +
+                    " — check SA bigquery.tables.getData permission and VPC-SC policy",
+                    tablePath, session.getEstimatedRowCount(),
+                    session.getReadOptions().getRowRestriction());
             return Collections.emptyList();
         }
 
