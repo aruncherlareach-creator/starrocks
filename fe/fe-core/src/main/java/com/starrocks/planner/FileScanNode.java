@@ -598,8 +598,12 @@ public class FileScanNode extends LoadScanNode {
                             numberOfColumnsFromFile);
 
             rangeDesc.setStrip_outer_array(jsonOptions.stripOuterArray);
-            rangeDesc.setJsonpaths(jsonOptions.jsonPaths);
-            rangeDesc.setJson_root(jsonOptions.jsonRoot);
+            if (jsonOptions.jsonPaths != null && !jsonOptions.jsonPaths.isEmpty()) {
+                rangeDesc.setJsonpaths(jsonOptions.jsonPaths);
+            }
+            if (jsonOptions.jsonRoot != null && !jsonOptions.jsonRoot.isEmpty()) {
+                rangeDesc.setJson_root(jsonOptions.jsonRoot);
+            }
 
             brokerScanRange(smallestLocations.first).addToRanges(rangeDesc);
             smallestLocations.second += rangeBytes;
