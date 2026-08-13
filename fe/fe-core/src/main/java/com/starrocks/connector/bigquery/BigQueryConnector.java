@@ -70,11 +70,18 @@ public class BigQueryConnector implements Connector {
             }
             // ADC — explicit or implicit default. Works on GCE/GKE node SA, Workload Identity,
             // gcloud credentials, and GOOGLE_APPLICATION_CREDENTIALS env var.
+            // NOTE: Do NOT call createScoped() here. On GKE with Workload Identity the metadata
+            // server already provides tokens with the correct scopes, and wrapping with
+            // createScoped() can interfere with how the gRPC CredentialsProvider refreshes
+            // tokens, causing the BigQuery Storage Read API to return empty sessions.
             if (authType == null || authType.isEmpty()
                     || BigQueryProperties.AUTH_TYPE_APPLICATION_DEFAULT.equals(authType)) {
-                return GoogleCredentials.getApplicationDefault()
-                        .createScoped("https://www.googleapis.com/auth/bigquery",
-                                "https://www.googleapis.com/auth/cloud-platform");
+                GoogleCredentials adc = GoogleCredentials.getApplicationDefault();
+                if (adc.createScopedRequired()) {
+                    adc = adc.createScoped("https://www.googleapis.com/auth/bigquery",
+                            "https://www.googleapis.com/auth/cloud-platform");
+                }
+                return adc;
             }
             throw new StarRocksConnectorException(
                     "Unsupported bigquery.auth.type: '" + authType + "'. " +
