@@ -888,3 +888,5 @@ StatusOr<ColumnPtr> H3Functions::h3_get_unidirectional_edges_from_hexagon(Functi
 }
 
 } // namespace starrocks
+
+#include "gen_cpp/opcode/H3Functions.inc"

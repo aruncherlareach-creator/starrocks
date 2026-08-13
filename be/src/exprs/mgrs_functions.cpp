@@ -107,3 +107,5 @@ StatusOr<ColumnPtr> MgrsFunctions::mgrs_to_lng(FunctionContext* ctx, const Colum
 }
 
 } // namespace starrocks
+
+#include "gen_cpp/opcode/MgrsFunctions.inc"
