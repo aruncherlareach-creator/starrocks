@@ -27,6 +27,22 @@ public class AnalyzeCreatePipeTest {
     }
 
     @Test
+    public void testSkipErrorFilesProperty() {
+        // skip_error_files=true accepted
+        AnalyzeTestUtil.analyzeSuccess(
+                "create pipe p1 properties(\"skip_error_files\"=\"true\") as " +
+                "insert into t0 select col_int from files(\"path\"=\"fake://x/1.parquet\",\"format\"=\"parquet\")");
+        // skip_error_files=false accepted (explicit default)
+        AnalyzeTestUtil.analyzeSuccess(
+                "create pipe p2 properties(\"skip_error_files\"=\"false\") as " +
+                "insert into t0 select col_int from files(\"path\"=\"fake://x/1.parquet\",\"format\"=\"parquet\")");
+        // non-boolean value rejected
+        AnalyzeTestUtil.analyzeFail(
+                "create pipe p3 properties(\"skip_error_files\"=\"maybe\") as " +
+                "insert into t0 select col_int from files(\"path\"=\"fake://x/1.parquet\",\"format\"=\"parquet\")");
+    }
+
+    @Test
     public void testNormal() {
         {
             // pipe's database: not set

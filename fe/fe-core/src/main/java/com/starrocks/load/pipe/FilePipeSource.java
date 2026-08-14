@@ -125,6 +125,20 @@ public class FilePipeSource implements GsonPostProcessable {
         return CollectionUtils.isEmpty(unloadedFiles);
     }
 
+    /** True when all files are either FINISHED or SKIPPED (used with skip_error_files=true). */
+    public boolean allLoadedOrSkipped() {
+        List<PipeFileRecord> unloadedFiles = fileListRepo.listFilesByState(FileListRepo.PipeFileState.UNLOADED, 1);
+        return CollectionUtils.isEmpty(unloadedFiles);
+    }
+
+    /** Mark all files in this task's piece as SKIPPED instead of ERROR. */
+    public void skipPieceFiles(PipeTaskDesc taskDesc) {
+        FilePipePiece piece = taskDesc.getPiece();
+        String errorMsg = taskDesc.getErrorMsg();
+        piece.getFiles().forEach(file -> file.errorMessage = errorMsg);
+        fileListRepo.updateFileState(piece.getFiles(), FileListRepo.PipeFileState.SKIPPED, null);
+    }
+
     /**
      * Build a piece with size limitation and files limitation
      */

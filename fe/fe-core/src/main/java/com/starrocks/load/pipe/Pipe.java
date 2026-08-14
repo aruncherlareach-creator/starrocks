@@ -110,6 +110,7 @@ public class Pipe implements GsonPostProcessable {
     private Map<Long, PipeTaskDesc> runningTasks = new HashMap<>();
     private ErrorInfo lastErrorInfo = new ErrorInfo();
     private int failedTaskExecutionCount = 0;
+    private boolean skipErrorFiles = false;
     private int pollIntervalSecond = Config.pipe_default_poll_interval_s;
     private long lastPolledTime = 0;
     private boolean recovered = false;
@@ -172,6 +173,10 @@ public class Pipe implements GsonPostProcessable {
                     ParseUtil.parseDataVolumeStr(value);
                     break;
                 }
+                case PipeAnalyzer.PROPERTY_SKIP_ERROR_FILES: {
+                    ParseUtil.parseBooleanValue(value, PipeAnalyzer.PROPERTY_SKIP_ERROR_FILES);
+                    break;
+                }
                 case PropertyAnalyzer.PROPERTIES_WAREHOUSE: {
                     // warehouse property is validated in PipeAnalyzer.analyzeWarehouseProperty
                     // Just check that value is not empty
@@ -209,6 +214,10 @@ public class Pipe implements GsonPostProcessable {
                 }
                 case PipeAnalyzer.PROPERTY_BATCH_FILES: {
                     pipeSource.setBatchFiles(Integer.parseInt(value));
+                    break;
+                }
+                case PipeAnalyzer.PROPERTY_SKIP_ERROR_FILES: {
+                    this.skipErrorFiles = ParseUtil.parseBooleanValue(value, PipeAnalyzer.PROPERTY_SKIP_ERROR_FILES);
                     break;
                 }
                 case PropertyAnalyzer.PROPERTIES_WAREHOUSE: {
@@ -344,11 +353,11 @@ public class Pipe implements GsonPostProcessable {
             // EOS
             if (fileSource.eos()) {
                 boolean allLoaded = fileSource.allLoaded();
-                if (allLoaded) {
+                if (allLoaded || (skipErrorFiles && fileSource.allLoadedOrSkipped())) {
                     changeState(State.FINISHED, true);
                     LOG.info("pipe {} finish all tasks, change state to {}", this, state);
                 } else {
-                    // Some error happen
+                    // Some error happened
                     recordPipeError("leave some unfinished files");
                     changeState(State.ERROR, true);
                     LOG.info("pipe {} finish all tasks but with error files, change state to {}, ", this, state);
@@ -409,9 +418,17 @@ public class Pipe implements GsonPostProcessable {
                     changedLoadStatus.loadingFiles -= task.getPiece().getNumFiles();
                 }
                 if (task.isError()) {
-                    failedTaskExecutionCount++;
-                    if (failedTaskExecutionCount > FAILED_TASK_THRESHOLD) {
-                        changeStateAction = () -> changeState(State.ERROR, false);
+                    if (skipErrorFiles) {
+                        // Mark all files in this task as SKIPPED so the pipe continues.
+                        LOG.warn("pipe {} skip_error_files=true: skipping {} failed file(s) in task {}, error: {}",
+                                name, task.getPiece().getNumFiles(), task.getId(),
+                                task.getLastErrorMsg());
+                        pipeSource.skipPieceFiles(task);
+                    } else {
+                        failedTaskExecutionCount++;
+                        if (failedTaskExecutionCount > FAILED_TASK_THRESHOLD) {
+                            changeStateAction = () -> changeState(State.ERROR, false);
+                        }
                     }
                 }
                 if (task.isFinished()) {

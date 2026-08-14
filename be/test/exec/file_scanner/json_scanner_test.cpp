@@ -1815,4 +1815,21 @@ TEST_F(JsonScannerTest, test_get_schema_no_type_inference) {
     }
 }
 
+// Schema inference tolerates unescaped control chars in strings (tab, newline, etc.)
+TEST_F(JsonScannerTest, test_get_schema_unescaped_ctrl_chars) {
+    auto scanner = make_schema_scanner(_state.get(), &_pool, _profile, _counter,
+                                       "./be/test/exec/test_data/json_scanner/schema_unescaped_ctrl.json");
+    ASSERT_OK(scanner->open());
+    std::vector<SlotDescriptor> schema;
+    // Should NOT return an UNESCAPED_CHARS error — pre-processor replaces them
+    ASSERT_OK(scanner->get_schema(&schema));
+    ASSERT_EQ(3u, schema.size());
+
+    std::map<std::string, TypeDescriptor> by_name;
+    for (const auto& s : schema) by_name[s.col_name()] = s.type();
+    EXPECT_EQ(TYPE_BIGINT,  by_name["id"].type);
+    EXPECT_EQ(TYPE_VARCHAR, by_name["msg"].type);
+    EXPECT_EQ(TYPE_VARCHAR, by_name["ts"].type);
+}
+
 } // namespace starrocks

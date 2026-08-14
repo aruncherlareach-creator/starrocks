@@ -329,6 +329,29 @@ Status JsonScanner::get_schema(std::vector<SlotDescriptor>* schema) {
     int64_t bytes_read = read_res.value();
     if (bytes_read <= 0) return Status::OK();
 
+    // Replace raw ASCII control characters (0x00-0x1F, except structural whitespace
+    // \t \n \r that appear OUTSIDE strings) with spaces so simdjson doesn't reject
+    // files produced by pipelines that embed un-escaped control chars in string values.
+    // Algorithm: track string-literal context; inside a string, replace any byte < 0x20
+    // that is not part of a valid escape sequence with a space (0x20).
+    {
+        bool in_string = false;
+        for (int64_t i = 0; i < bytes_read; ++i) {
+            uint8_t c = static_cast<uint8_t>(buf[i]);
+            if (in_string) {
+                if (c == '\\') {
+                    ++i; // skip the escaped character entirely
+                } else if (c == '"') {
+                    in_string = false;
+                } else if (c < 0x20) {
+                    buf[i] = ' '; // replace unescaped control char
+                }
+            } else {
+                if (c == '"') in_string = true;
+            }
+        }
+    }
+
     // Detect NDJSON vs JSON array by first non-whitespace character.
     bool is_ndjson = false;
     for (int64_t i = 0; i < bytes_read; ++i) {

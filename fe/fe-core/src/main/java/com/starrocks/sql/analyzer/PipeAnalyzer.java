@@ -61,6 +61,8 @@ public class PipeAnalyzer {
     public static final String PROPERTY_POLL_INTERVAL = "poll_interval";
     public static final String PROPERTY_BATCH_SIZE = "batch_size";
     public static final String PROPERTY_BATCH_FILES = "batch_files";
+    /** When true, files that fail to load are marked SKIPPED and the pipe continues. */
+    public static final String PROPERTY_SKIP_ERROR_FILES = "skip_error_files";
 
     public static final ImmutableSet<String> SUPPORTED_PROPERTIES =
             new ImmutableSortedSet.Builder<String>(String.CASE_INSENSITIVE_ORDER)
@@ -68,6 +70,7 @@ public class PipeAnalyzer {
                     .add(PROPERTY_POLL_INTERVAL)
                     .add(PROPERTY_BATCH_SIZE)
                     .add(PROPERTY_BATCH_FILES)
+                    .add(PROPERTY_SKIP_ERROR_FILES)
                     .add(PropertyAnalyzer.PROPERTIES_WAREHOUSE)
                     .build();
 
@@ -146,6 +149,10 @@ public class PipeAnalyzer {
                 }
                 case PROPERTY_AUTO_INGEST: {
                     ParseUtil.parseBooleanValue(valueStr, PROPERTY_AUTO_INGEST);
+                    break;
+                }
+                case PROPERTY_SKIP_ERROR_FILES: {
+                    ParseUtil.parseBooleanValue(valueStr, PROPERTY_SKIP_ERROR_FILES);
                     break;
                 }
                 case PropertyAnalyzer.PROPERTIES_WAREHOUSE: {
