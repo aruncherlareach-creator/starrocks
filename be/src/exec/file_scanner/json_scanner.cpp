@@ -355,58 +355,74 @@ Status JsonScanner::get_schema(std::vector<SlotDescriptor>* schema) {
         }
     };
 
+    int64_t rows_skipped = 0;
     try {
         if (is_ndjson) {
-            // iterate_many returns document_stream directly; errors surface as exceptions.
-            // Use explicit iterator to match the pattern in JsonDocumentStreamParser.
             simdjson::ondemand::document_stream doc_stream = simdjson_parser.iterate_many(
                     buf.get(), static_cast<size_t>(bytes_read), static_cast<size_t>(capacity));
             int64_t rows_sampled = 0;
             auto itr = doc_stream.begin();
             while (rows_sampled < sample_rows && itr != doc_stream.end()) {
-                simdjson::ondemand::document_reference doc = *itr;
-                if (!_root_paths.empty()) {
-                    simdjson::ondemand::object root_obj = doc.get_object();
-                    simdjson::ondemand::value root_val;
-                    if (!JsonFunctions::extract_from_object(root_obj, _root_paths, &root_val).ok()) {
-                        ++itr;
-                        continue;
+                try {
+                    simdjson::ondemand::document_reference doc = *itr;
+                    if (!_root_paths.empty()) {
+                        simdjson::ondemand::object root_obj = doc.get_object();
+                        simdjson::ondemand::value root_val;
+                        if (!JsonFunctions::extract_from_object(root_obj, _root_paths, &root_val).ok()) {
+                            ++itr; continue;
+                        }
+                        simdjson::ondemand::object sub_obj = root_val.get_object();
+                        collect_fields(sub_obj);
+                    } else {
+                        simdjson::ondemand::object obj = doc.get_object();
+                        collect_fields(obj);
                     }
-                    simdjson::ondemand::object sub_obj = root_val.get_object();
-                    collect_fields(sub_obj);
-                } else {
-                    simdjson::ondemand::object obj = doc.get_object();
-                    collect_fields(obj);
+                    ++itr;
+                    rows_sampled++;
+                } catch (simdjson::simdjson_error& row_err) {
+                    // Skip rows with parse errors (e.g. UNESCAPED_CHARS) and try the next one.
+                    LOG(WARNING) << "JSON schema inference: skipping row due to parse error: "
+                                 << simdjson::error_message(row_err.error());
+                    ++itr;
+                    ++rows_skipped;
                 }
-                ++itr;
-                rows_sampled++;
             }
         } else {
-            // iterate returns simdjson_result<document>; implicit conversion throws on error.
             simdjson::ondemand::document doc = simdjson_parser.iterate(
                     buf.get(), static_cast<size_t>(bytes_read), static_cast<size_t>(capacity));
             simdjson::ondemand::array arr = doc.get_array();
             int64_t rows_sampled = 0;
             for (simdjson::ondemand::value elem : arr) {
                 if (rows_sampled >= sample_rows) break;
-                if (!_root_paths.empty()) {
-                    simdjson::ondemand::object elem_obj = elem.get_object();
-                    simdjson::ondemand::value root_val;
-                    if (!JsonFunctions::extract_from_object(elem_obj, _root_paths, &root_val).ok()) {
-                        continue;
+                try {
+                    if (!_root_paths.empty()) {
+                        simdjson::ondemand::object elem_obj = elem.get_object();
+                        simdjson::ondemand::value root_val;
+                        if (!JsonFunctions::extract_from_object(elem_obj, _root_paths, &root_val).ok()) {
+                            continue;
+                        }
+                        simdjson::ondemand::object sub_obj = root_val.get_object();
+                        collect_fields(sub_obj);
+                    } else {
+                        simdjson::ondemand::object obj = elem.get_object();
+                        collect_fields(obj);
                     }
-                    simdjson::ondemand::object sub_obj = root_val.get_object();
-                    collect_fields(sub_obj);
-                } else {
-                    simdjson::ondemand::object obj = elem.get_object();
-                    collect_fields(obj);
+                    rows_sampled++;
+                } catch (simdjson::simdjson_error& row_err) {
+                    LOG(WARNING) << "JSON schema inference: skipping row due to parse error: "
+                                 << simdjson::error_message(row_err.error());
+                    ++rows_skipped;
                 }
-                rows_sampled++;
             }
         }
     } catch (simdjson::simdjson_error& e) {
+        // Fatal error at stream/document level (e.g. corrupt file, truncated gzip).
         return Status::DataQualityError(
                 fmt::format("JSON schema inference failed: {}", simdjson::error_message(e.error())));
+    }
+    if (rows_skipped > 0) {
+        LOG(WARNING) << "JSON schema inference: skipped " << rows_skipped
+                     << " rows with parse errors in " << _scan_range.ranges[0].path;
     }
 
     FileScanner::merge_schema(row_schemas, schema);
