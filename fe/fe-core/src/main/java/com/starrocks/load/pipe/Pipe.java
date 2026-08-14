@@ -414,21 +414,21 @@ public class Pipe implements GsonPostProcessable {
             for (PipeTaskDesc task : runningTasks.values()) {
                 if (task.isFinished() || task.tooManyErrors()) {
                     removeTaskId.add(task.getId());
-                    pipeSource.finishPiece(task);
                     changedLoadStatus.loadingFiles -= task.getPiece().getNumFiles();
-                }
-                if (task.isError()) {
-                    if (skipErrorFiles) {
-                        // Mark all files in this task as SKIPPED so the pipe continues.
-                        LOG.warn("pipe {} skip_error_files=true: skipping {} failed file(s) in task {}, error: {}",
+                    if (task.tooManyErrors() && skipErrorFiles) {
+                        // Skip files instead of marking them ERROR so the pipe continues.
+                        LOG.warn("pipe {} skip_error_files=true: skipping {} file(s) in task {}, error: {}",
                                 name, task.getPiece().getNumFiles(), task.getId(),
-                                task.getLastErrorMsg());
+                                task.getErrorMsg());
                         pipeSource.skipPieceFiles(task);
                     } else {
-                        failedTaskExecutionCount++;
-                        if (failedTaskExecutionCount > FAILED_TASK_THRESHOLD) {
-                            changeStateAction = () -> changeState(State.ERROR, false);
-                        }
+                        pipeSource.finishPiece(task);
+                    }
+                }
+                if (task.isError() && !skipErrorFiles) {
+                    failedTaskExecutionCount++;
+                    if (failedTaskExecutionCount > FAILED_TASK_THRESHOLD) {
+                        changeStateAction = () -> changeState(State.ERROR, false);
                     }
                 }
                 if (task.isFinished()) {
