@@ -309,25 +309,31 @@ Status JsonScanner::get_schema(std::vector<SlotDescriptor>* schema) {
     }
     RETURN_IF_ERROR(create_sequential_file(range_desc, addr, _scan_range.params, &file));
 
-    // Read the whole file into a buffer (same approach as JsonReader::_read_file_broker).
-    auto* stream = down_cast<io::SeekableInputStream*>(file->stream().get());
-    auto size_res = stream->get_size();
-    if (!size_res.ok()) return size_res.status();
-    int64_t sz = size_res.value();
-    if (sz == 0) return Status::OK();
-    if (sz >= _params.json_file_size_limit) {
-        return Status::MemoryLimitExceeded(
-                fmt::format("File size {} exceeds json_file_size_limit {}, adjust FE configuration "
-                            "json_file_size_limit if needed",
-                            sz, _params.json_file_size_limit));
-    }
-
-    auto capacity = sz + simdjson::SIMDJSON_PADDING;
+    // Read the file into a buffer for schema sampling.
+    // We must NOT use stream->get_size() as the read limit because for compressed files
+    // (e.g. .json.gz) get_size() returns the COMPRESSED byte count.  Reading that many
+    // bytes of decompressed output would truncate the stream mid-document and cause
+    // spurious parse errors (UNESCAPED_CHARS, TAPE_ERROR, etc.).
+    // Instead, read in chunks up to json_file_size_limit, stopping early once we have
+    // collected enough sample rows.
+    const int64_t kChunkSize = 1 << 20; // 1 MiB per chunk
+    const int64_t max_read = _params.json_file_size_limit > 0 ? _params.json_file_size_limit : (1LL << 32);
+    int64_t capacity = std::min(max_read, static_cast<int64_t>(8 << 20)) + simdjson::SIMDJSON_PADDING;
     auto buf = std::make_unique<char[]>(capacity);
-    auto read_res = file->read(buf.get(), sz);
-    if (!read_res.ok()) return read_res.status();
-    int64_t bytes_read = read_res.value();
+    int64_t bytes_read = 0;
+    while (bytes_read < capacity - static_cast<int64_t>(simdjson::SIMDJSON_PADDING)) {
+        int64_t to_read = std::min(kChunkSize, capacity - static_cast<int64_t>(simdjson::SIMDJSON_PADDING) - bytes_read);
+        auto chunk_res = file->read(buf.get() + bytes_read, to_read);
+        if (!chunk_res.ok()) return chunk_res.status();
+        int64_t got = chunk_res.value();
+        if (got <= 0) break; // EOF
+        bytes_read += got;
+    }
     if (bytes_read <= 0) return Status::OK();
+    if (bytes_read >= max_read) {
+        LOG(WARNING) << "JSON schema inference: file exceeds json_file_size_limit, "
+                     << "truncating at " << bytes_read << " bytes for " << _scan_range.ranges[0].path;
+    }
 
     // Replace raw ASCII control characters (0x00-0x1F, except structural whitespace
     // \t \n \r that appear OUTSIDE strings) with spaces so simdjson doesn't reject
