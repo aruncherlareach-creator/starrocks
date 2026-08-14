@@ -54,6 +54,7 @@ public class PruneHDFSScanColumnRule extends TransformationRule {
             OperatorType.LOGICAL_PAIMON_SCAN,
             OperatorType.LOGICAL_ODPS_SCAN,
             OperatorType.LOGICAL_BIGQUERY_SCAN,
+            OperatorType.LOGICAL_SPANNER_SCAN,
             OperatorType.LOGICAL_TABLE_FUNCTION_TABLE_SCAN,
             OperatorType.LOGICAL_ICEBERG_METADATA_SCAN
     );

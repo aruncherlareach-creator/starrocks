@@ -374,6 +374,13 @@ public:
     bool has_partition() const override { return false; }
 };
 
+class SpannerTableDescriptor : public HiveTableDescriptor {
+public:
+    SpannerTableDescriptor(const TTableDescriptor& tdesc, ObjectPool* pool);
+    ~SpannerTableDescriptor() override = default;
+    bool has_partition() const override { return false; }
+};
+
 // ===========================================
 
 class OlapTableDescriptor : public TableDescriptor {

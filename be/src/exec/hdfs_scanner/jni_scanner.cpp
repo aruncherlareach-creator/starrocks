@@ -630,6 +630,17 @@ std::unique_ptr<JniScanner> create_bigquery_jni_scanner(const JniScanner::Create
     return std::make_unique<JniScanner>(scanner_factory_class, jni_scanner_params);
 }
 
+// ---------------spanner jni scanner------------------
+std::unique_ptr<JniScanner> create_spanner_jni_scanner(const JniScanner::CreateOptions& options) {
+    const auto& scan_range = *(options.scan_range);
+
+    std::map<std::string, std::string> jni_scanner_params;
+    jni_scanner_params.insert(scan_range.spanner_split_infos.begin(), scan_range.spanner_split_infos.end());
+
+    const std::string scanner_factory_class = "com/starrocks/spanner/reader/SpannerSplitScannerFactory";
+    return std::make_unique<JniScanner>(scanner_factory_class, jni_scanner_params);
+}
+
 // ---------------iceberg metadata jni scanner------------------
 std::unique_ptr<JniScanner> create_iceberg_metadata_jni_scanner(const JniScanner::CreateOptions& options) {
     const auto& scan_range = *(options.scan_range);

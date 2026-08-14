@@ -43,6 +43,7 @@ public class MergeLimitDirectRule extends TransformationRule {
             .add(OperatorType.LOGICAL_ODPS_SCAN)
             .add(OperatorType.LOGICAL_KUDU_SCAN)
             .add(OperatorType.LOGICAL_BIGQUERY_SCAN)
+            .add(OperatorType.LOGICAL_SPANNER_SCAN)
             .add(OperatorType.LOGICAL_SCHEMA_SCAN)
             .add(OperatorType.LOGICAL_MYSQL_SCAN)
             .add(OperatorType.LOGICAL_ES_SCAN)

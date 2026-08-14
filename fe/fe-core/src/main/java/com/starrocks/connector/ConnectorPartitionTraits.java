@@ -26,6 +26,7 @@ import com.starrocks.common.AnalysisException;
 import com.starrocks.common.Config;
 import com.starrocks.common.tvr.TvrVersionRange;
 import com.starrocks.connector.partitiontraits.BigQueryPartitionTraits;
+import com.starrocks.connector.partitiontraits.SpannerPartitionTraits;
 import com.starrocks.connector.partitiontraits.CachedPartitionTraits;
 import com.starrocks.connector.partitiontraits.DeltaLakePartitionTraits;
 import com.starrocks.connector.partitiontraits.HivePartitionTraits;
@@ -78,6 +79,7 @@ public abstract class ConnectorPartitionTraits {
                     .put(Table.TableType.JDBC, JDBCPartitionTraits::new)
                     .put(Table.TableType.DELTALAKE, DeltaLakePartitionTraits::new)
                     .put(Table.TableType.BIGQUERY, BigQueryPartitionTraits::new)
+                    .put(Table.TableType.SPANNER, SpannerPartitionTraits::new)
                     .build();
 
     protected Table table;

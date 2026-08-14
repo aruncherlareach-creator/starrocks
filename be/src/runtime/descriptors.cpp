@@ -402,6 +402,9 @@ KuduTableDescriptor::KuduTableDescriptor(const TTableDescriptor& tdesc, ObjectPo
 BigQueryTableDescriptor::BigQueryTableDescriptor(const TTableDescriptor& tdesc, ObjectPool* pool)
         : HiveTableDescriptor(tdesc, pool) {}
 
+SpannerTableDescriptor::SpannerTableDescriptor(const TTableDescriptor& tdesc, ObjectPool* pool)
+        : HiveTableDescriptor(tdesc, pool) {}
+
 HiveTableDescriptor::HiveTableDescriptor(const TTableDescriptor& tdesc, ObjectPool* pool) : TableDescriptor(tdesc) {}
 
 bool HiveTableDescriptor::is_partition_col(const SlotDescriptor* slot) const {
@@ -799,6 +802,10 @@ Status DescriptorTbl::create(RuntimeState* state, ObjectPool* pool, const TDescr
         }
         case TTableType::BIGQUERY_TABLE: {
             desc = pool->add(new BigQueryTableDescriptor(tdesc, pool));
+            break;
+        }
+        case TTableType::SPANNER_TABLE: {
+            desc = pool->add(new SpannerTableDescriptor(tdesc, pool));
             break;
         }
         case TTableType::LOGICAL_ICEBERG_METADATA_TABLE:

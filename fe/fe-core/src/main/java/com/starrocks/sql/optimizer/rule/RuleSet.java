@@ -18,6 +18,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.starrocks.sql.optimizer.rule.implementation.AssertOneRowImplementationRule;
 import com.starrocks.sql.optimizer.rule.implementation.BigQueryScanImplementationRule;
+import com.starrocks.sql.optimizer.rule.implementation.SpannerScanImplementationRule;
 import com.starrocks.sql.optimizer.rule.implementation.CTEAnchorImplementationRule;
 import com.starrocks.sql.optimizer.rule.implementation.CTEAnchorToNoCTEImplementationRule;
 import com.starrocks.sql.optimizer.rule.implementation.CTEConsumeInlineImplementationRule;
@@ -214,6 +215,7 @@ public class RuleSet {
             new MetaScanImplementationRule(),
             new CacheStatsScanImplementationRule(),
             new BigQueryScanImplementationRule(),
+            new SpannerScanImplementationRule(),
             new JDBCScanImplementationRule(),
             new TableFunctionTableScanImplementationRule(),
             new HashAggImplementationRule(),

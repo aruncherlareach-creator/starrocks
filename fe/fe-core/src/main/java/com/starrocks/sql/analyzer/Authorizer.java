@@ -208,6 +208,7 @@ public class Authorizer {
             case PAIMON_VIEW:
             case ODPS:
             case BIGQUERY:
+            case SPANNER:
             case KUDU:
                 // `privilegeType == null` meaning we don't check specified action, just any action
                 if (privilegeType == null) {

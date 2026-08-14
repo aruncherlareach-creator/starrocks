@@ -20,6 +20,7 @@
         <module>hadoop-ext</module>
         <module>odps-reader</module>
         <module>bigquery-reader</module>
+        <module>spanner-reader</module>
         <module>iceberg-metadata-reader</module>
         <module>kudu-reader</module>
         <module>common-runtime</module>

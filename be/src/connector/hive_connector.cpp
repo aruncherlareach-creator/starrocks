@@ -840,6 +840,10 @@ Status HiveDataSource::_init_scanner(RuntimeState* state) {
     if (scan_range.__isset.use_bigquery_jni_reader) {
         use_bigquery_jni_reader = scan_range.use_bigquery_jni_reader;
     }
+    bool use_spanner_jni_reader = false;
+    if (scan_range.__isset.use_spanner_jni_reader) {
+        use_spanner_jni_reader = scan_range.use_spanner_jni_reader;
+    }
 
     bool use_iceberg_jni_metadata_reader = false;
     if (scan_range.__isset.use_iceberg_jni_metadata_reader) {
@@ -872,6 +876,8 @@ Status HiveDataSource::_init_scanner(RuntimeState* state) {
         scanner = create_odps_jni_scanner(jni_scanner_create_options).release();
     } else if (use_bigquery_jni_reader) {
         scanner = create_bigquery_jni_scanner(jni_scanner_create_options).release();
+    } else if (use_spanner_jni_reader) {
+        scanner = create_spanner_jni_scanner(jni_scanner_create_options).release();
     } else if (use_iceberg_jni_metadata_reader) {
         scanner = create_iceberg_metadata_jni_scanner(jni_scanner_create_options).release();
     } else if (use_kudu_jni_reader) {

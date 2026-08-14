@@ -477,6 +477,12 @@ struct THdfsScanRange {
 
     // BigQuery split info (read_session_name, read_stream_name, credentials, etc.)
     40: optional map<string, string> bigquery_split_infos
+
+    // whether to use JNI scanner to read data of Cloud Spanner table via gRPC Read API
+    41: optional bool use_spanner_jni_reader
+
+    // Spanner split info (session_name, transaction_id, partition_token, project_id, etc.)
+    42: optional map<string, string> spanner_split_infos
 }
 
 struct TBinlogScanRange {

@@ -48,7 +48,8 @@ public class PruneScanColumnRule extends TransformationRule {
             OperatorType.LOGICAL_JDBC_SCAN,
             OperatorType.LOGICAL_BINLOG_SCAN,
             OperatorType.LOGICAL_KUDU_SCAN,
-            OperatorType.LOGICAL_BIGQUERY_SCAN
+            OperatorType.LOGICAL_BIGQUERY_SCAN,
+            OperatorType.LOGICAL_SPANNER_SCAN
     );
 
     public PruneScanColumnRule() {

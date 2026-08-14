@@ -50,7 +50,8 @@ public class PushDownPredicateToExternalTableScanRule extends TransformationRule
                         .addChildren(MultiOpPattern.of(OperatorType.LOGICAL_MYSQL_SCAN,
                                 OperatorType.LOGICAL_JDBC_SCAN,
                                 OperatorType.LOGICAL_ODPS_SCAN,
-                        OperatorType.LOGICAL_BIGQUERY_SCAN)));
+                        OperatorType.LOGICAL_BIGQUERY_SCAN,
+                        OperatorType.LOGICAL_SPANNER_SCAN)));
     }
 
     @Override

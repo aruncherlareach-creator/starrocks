@@ -15,6 +15,7 @@
 package com.starrocks.connector;
 
 import com.starrocks.connector.bigquery.BigQueryConnector;
+import com.starrocks.connector.spanner.SpannerConnector;
 import com.starrocks.connector.config.ConnectorConfig;
 import com.starrocks.connector.delta.DeltaLakeConnector;
 import com.starrocks.connector.elasticsearch.ElasticsearchConnector;
@@ -44,7 +45,8 @@ public enum ConnectorType {
     ODPS("odps", OdpsConnector.class, null),
     KUDU("kudu", KuduConnector.class, null),
     UNIFIED("unified", UnifiedConnector.class, null),
-    BIGQUERY("bigquery", BigQueryConnector.class, null);
+    BIGQUERY("bigquery", BigQueryConnector.class, null),
+    SPANNER("spanner", SpannerConnector.class, null);
 
     public static final Set<ConnectorType> SUPPORT_TYPE_SET = EnumSet.of(
             ES,
@@ -57,7 +59,8 @@ public enum ConnectorType {
             ODPS,
             KUDU,
             UNIFIED,
-            BIGQUERY
+            BIGQUERY,
+            SPANNER
     );
 
     ConnectorType(String name, Class connectorClass, Class configClass) {

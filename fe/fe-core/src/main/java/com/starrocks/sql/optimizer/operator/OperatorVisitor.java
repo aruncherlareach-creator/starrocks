@@ -17,6 +17,7 @@ package com.starrocks.sql.optimizer.operator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalAggregationOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalAssertOneRowOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.logical.LogicalSpannerScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalCTEAnchorOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalCTEConsumeOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalCTEProduceOperator;
@@ -59,6 +60,7 @@ import com.starrocks.sql.optimizer.operator.logical.LogicalWindowOperator;
 import com.starrocks.sql.optimizer.operator.logical.MockOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalAssertOneRowOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.physical.PhysicalSpannerScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalCTEAnchorOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalCTEConsumeOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalCTEProduceOperator;
@@ -266,6 +268,10 @@ public abstract class OperatorVisitor<R, C> {
         return visitLogicalTableScan(node, context);
     }
 
+    public R visitLogicalSpannerScan(LogicalSpannerScanOperator node, C context) {
+        return visitLogicalTableScan(node, context);
+    }
+
     public R visitLogicalLimit(LogicalLimitOperator node, C context) {
         return visitOperator(node, context);
     }
@@ -426,6 +432,10 @@ public abstract class OperatorVisitor<R, C> {
     }
 
     public R visitPhysicalBigQueryScan(PhysicalBigQueryScanOperator node, C context) {
+        return visitOperator(node, context);
+    }
+
+    public R visitPhysicalSpannerScan(PhysicalSpannerScanOperator node, C context) {
         return visitOperator(node, context);
     }
 

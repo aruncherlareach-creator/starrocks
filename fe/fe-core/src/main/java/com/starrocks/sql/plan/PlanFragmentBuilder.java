@@ -63,6 +63,7 @@ import com.starrocks.planner.AggregationNode;
 import com.starrocks.planner.AnalyticEvalNode;
 import com.starrocks.planner.AssertNumRowsNode;
 import com.starrocks.planner.BigQueryScanNode;
+import com.starrocks.planner.SpannerScanNode;
 import com.starrocks.planner.BinlogScanNode;
 import com.starrocks.planner.CacheStatsScanNode;
 import com.starrocks.planner.DataPartition;
@@ -173,6 +174,7 @@ import com.starrocks.sql.optimizer.operator.UKFKConstraints;
 import com.starrocks.sql.optimizer.operator.logical.LogicalTopNOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalAssertOneRowOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.physical.PhysicalSpannerScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalCTEConsumeOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalCTEProduceOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalCacheStatsScanOperator;
@@ -1558,6 +1560,53 @@ public class PlanFragmentBuilder {
 
             PlanFragment fragment =
                     new PlanFragment(context.getNextFragmentId(), bigQueryScanNode, DataPartition.RANDOM);
+            context.getFragments().add(fragment);
+            return fragment;
+        }
+
+        public PlanFragment visitPhysicalSpannerScan(OptExpression optExpression, ExecPlan context) {
+            PhysicalSpannerScanOperator node = (PhysicalSpannerScanOperator) optExpression.getOp();
+
+            Table referenceTable = node.getTable();
+            context.getDescTbl().addReferencedTable(referenceTable);
+            TupleDescriptor tupleDescriptor = context.getDescTbl().createTupleDescriptor();
+            tupleDescriptor.setTable(referenceTable);
+
+            prepareContextSlots(node, context, tupleDescriptor);
+
+            SpannerScanNode spannerScanNode =
+                    new SpannerScanNode(context.getNextNodeId(), tupleDescriptor, "SpannerScanNode");
+            spannerScanNode.setScanOptimizeOption(node.getScanOptimizeOption());
+            currentExecGroup.add(spannerScanNode, true);
+            try {
+                ScalarOperatorToExpr.FormatterContext formatterContext =
+                        new ScalarOperatorToExpr.FormatterContext(context.getColRefToExpr());
+                List<ScalarOperator> predicates = Utils.extractConjuncts(node.getPredicate());
+                for (ScalarOperator predicate : predicates) {
+                    spannerScanNode.getConjuncts()
+                            .add(ScalarOperatorToExpr.buildExecExpression(predicate, formatterContext));
+                }
+                ScanOperatorPredicates scanOperatorPredicates = node.getScanOperatorPredicates();
+                Collection<Long> selectedPartitionIds = scanOperatorPredicates.getSelectedPartitionIds();
+                List<PartitionKey> partitionKeys =
+                        selectedPartitionIds.stream()
+                                .map(id -> scanOperatorPredicates.getIdToPartitionKey().get(id))
+                                .collect(Collectors.toList());
+                spannerScanNode.setupScanRangeLocations(tupleDescriptor, node.getPredicate(), partitionKeys);
+                HDFSScanNodePredicates scanNodePredicates = spannerScanNode.getScanNodePredicates();
+                prepareMinMaxExpr(scanNodePredicates, scanOperatorPredicates, context, referenceTable);
+                prepareCommonExpr(scanNodePredicates, scanOperatorPredicates, context);
+            } catch (Exception e) {
+                LOG.error("Spanner scan node get scan range locations failed", e);
+                throw new StarRocksPlannerException(e.getMessage(), INTERNAL_ERROR);
+            }
+
+            spannerScanNode.setLimit(node.getLimit());
+            tupleDescriptor.computeMemLayout();
+            context.getScanNodes().add(spannerScanNode);
+
+            PlanFragment fragment =
+                    new PlanFragment(context.getNextFragmentId(), spannerScanNode, DataPartition.RANDOM);
             context.getFragments().add(fragment);
             return fragment;
         }

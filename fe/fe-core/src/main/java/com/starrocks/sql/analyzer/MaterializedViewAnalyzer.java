@@ -180,6 +180,7 @@ public class MaterializedViewAnalyzer {
                     Table.TableType.PAIMON,
                     Table.TableType.ODPS,
                     Table.TableType.BIGQUERY,
+                    Table.TableType.SPANNER,
                     Table.TableType.KUDU,
                     Table.TableType.DELTALAKE,
                     Table.TableType.VIEW,

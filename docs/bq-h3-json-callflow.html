@@ -1,0 +1,2574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Ontology DB — BigQuery · H3/MGRS · JSON PIPE</title>
+<style>
+/* ── Verizon NHG fonts ─────────────────────────────────────── */
+@font-face{font-family:'VZ';font-weight:400;font-style:normal;font-display:swap;src:url('https://scache1.vzw.com/globalnav/fonts/verizon-nhg/VerizonNHGeDS-Regular.woff2') format('woff2');}
+@font-face{font-family:'VZ';font-weight:700;font-style:normal;font-display:swap;src:url('https://scache1.vzw.com/globalnav/fonts/verizon-nhg/VerizonNHGeDS-Bold.woff2') format('woff2');}
+@font-face{font-family:'VZText';font-weight:400;font-display:swap;src:url('https://scache1.vzw.com/globalnav/fonts/verizon-nhg/VerizonNHGeTX-Regular.woff2') format('woff2');}
+@font-face{font-family:'VZText';font-weight:700;font-display:swap;src:url('https://scache1.vzw.com/globalnav/fonts/verizon-nhg/VerizonNHGeTX-Bold.woff2') format('woff2');}
+
+/* ── VDS tokens ─────────────────────────────────────────────── */
+:root{
+  --brand:#e10014; --brand-dim:rgba(225,0,20,.08); --cta-dark:#b0000f;
+  --bg:#f8f7f5; --surface:#fff; --overlay:#eeece8; --line:#d8d5cf;
+  --line-strong:#b8b5af; --line-subtle:#eeece8;
+  --txt:#000; --txt2:#716f6d; --muted:#aaa8a3;
+  --hdr:#1d1d1b; --hdr-border:#2e2e2b;
+  --sidebar-bg:#f8f3e9; --sidebar-bdr:#e0dbd0;
+  --success-bg:#e0f4e8; --success-txt:#006625;
+  --error-bg:#fde8eb;   --error-txt:#c40015;
+  --warn-bg:#fff2cc;    --warn-txt:#7a4f00;
+  --info-bg:#dceeff;    --info-txt:#0047b3;
+  --mono:'Menlo','Consolas','Monaco',monospace;
+  --sans:'VZ','Helvetica Neue',Arial,sans-serif;
+  --text:'VZText','Helvetica Neue',Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased;}
+
+/* ── Shell ──────────────────────────────────────────────────── */
+.shell{display:flex;height:100vh;overflow:hidden;}
+.sidebar{width:210px;flex-shrink:0;background:var(--sidebar-bg);border-right:1px solid var(--sidebar-bdr);display:flex;flex-direction:column;overflow-y:auto;}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--sidebar-bdr);}
+.sb-brand-name{font-size:15px;font-weight:700;color:var(--brand);letter-spacing:-.02em;}
+.sb-sect{padding:14px 8px 4px;}
+.sb-lbl{font-family:var(--text);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:0 8px;margin-bottom:4px;}
+.sb-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;font-size:13px;font-weight:500;color:var(--txt2);cursor:pointer;transition:background .1s,color .1s;user-select:none;}
+.sb-link:hover{background:rgba(225,0,20,.06);color:var(--txt);}
+.sb-link.active{background:rgba(225,0,20,.09);color:var(--brand);font-weight:600;}
+.sb-link svg{width:14px;height:14px;flex-shrink:0;opacity:.65;}
+.sb-link.active svg{opacity:1;}
+
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--hdr);border-bottom:1px solid var(--hdr-border);}
+.topbar-title{font-size:13px;font-weight:600;color:#fff;letter-spacing:.01em;}
+.topbar-sub{font-family:var(--text);font-size:11px;color:#aaa8a3;margin-top:2px;}
+.content{flex:1;overflow-y:auto;padding:28px 28px 64px;}
+
+/* ── Panels ─────────────────────────────────────────────────── */
+.panel{display:none;}
+.panel.active{display:block;animation:fadeUp .25s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── Section title ──────────────────────────────────────────── */
+.stitle{font-family:var(--text);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 20px;}
+
+/* ── Grid ───────────────────────────────────────────────────── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.mt2{margin-top:16px;} .mt3{margin-top:20px;}
+
+/* ── Card ───────────────────────────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px;}
+
+/* ── Badges ─────────────────────────────────────────────────── */
+.bdg{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-family:var(--text);font-size:11px;font-weight:600;letter-spacing:.02em;}
+.bdg-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.bdg-ok{background:var(--success-bg);color:var(--success-txt);}  .bdg-ok  .bdg-dot{background:var(--success-txt);}
+.bdg-err{background:var(--error-bg);color:var(--error-txt);}
+.bdg-neu{background:var(--overlay);color:var(--txt2);}
+
+/* ── Callouts ───────────────────────────────────────────────── */
+.cl{border-radius:6px;padding:12px 14px;margin:0 0 16px;font-size:12px;line-height:1.6;}
+.cl h4{font-family:var(--text);font-size:12px;font-weight:700;margin:0 0 5px;letter-spacing:.02em;}
+.cl-info{background:var(--info-bg);border-left:3px solid var(--info-txt);color:var(--info-txt);}
+.cl-ok  {background:var(--success-bg);border-left:3px solid var(--success-txt);color:var(--success-txt);}
+.cl-warn{background:var(--warn-bg);border-left:3px solid var(--warn-txt);color:var(--warn-txt);}
+
+/* ── Flow diagram ───────────────────────────────────────────── */
+.flow{display:flex;flex-direction:column;}
+.frow{display:flex;min-height:40px;}
+.flabel{
+  writing-mode:vertical-rl;transform:rotate(180deg);
+  min-width:26px;font-family:var(--text);font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.12em;display:flex;
+  align-items:center;justify-content:center;border-radius:4px 0 0 4px;flex-shrink:0;
+}
+.fl-user{background:#fde8eb;color:var(--error-txt);}
+.fl-fe  {background:var(--info-bg);color:var(--info-txt);}
+.fl-be  {background:var(--success-bg);color:var(--success-txt);}
+.fl-gcp {background:var(--warn-bg);color:var(--warn-txt);}
+.fsteps{flex:1;border-left:2px solid var(--line);}
+.fstep{display:flex;gap:10px;padding:9px 12px;}
+.fnum{
+  min-width:22px;height:22px;border-radius:50%;background:var(--overlay);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--text);font-size:10px;font-weight:700;color:var(--txt2);flex-shrink:0;
+}
+.fbody{flex:1;}
+.ft{font-size:13px;font-weight:600;color:var(--txt);}
+.fd{font-family:var(--text);font-size:11px;color:var(--txt2);margin-top:2px;}
+.fw{font-family:var(--text);font-size:11px;color:var(--warn-txt);margin-top:3px;}
+.farr{text-align:center;color:var(--line-strong);font-size:18px;line-height:1;padding:3px 0;}
+
+/* ── SQL code ───────────────────────────────────────────────── */
+.sql{background:#0f0f0e;border:1px solid var(--line);border-radius:6px;padding:14px;font-size:11.5px;line-height:1.7;overflow-x:auto;font-family:var(--mono);color:#d4d0ca;margin:10px 0;}
+.kw{color:#60a5fa;} .str{color:#fbbf24;} .cmt{color:#6b7280;} .fn{color:#a78bfa;}
+
+/* ── Table ──────────────────────────────────────────────────── */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+.tbl th{font-family:var(--text);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;}
+.tbl td{padding:9px 12px;border-bottom:1px solid var(--line-subtle);color:var(--txt2);font-family:var(--text);font-size:12px;}
+.tbl td:first-child{font-family:var(--mono);font-size:11px;color:var(--txt);font-weight:500;}
+.tbl tbody tr:last-child td{border-bottom:none;}
+.tbl tbody tr:hover td{background:var(--overlay);}
+
+/* ── Inner tabs (Examples / Flow) ──────────────────────────── */
+.itabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:20px;}
+.itab{padding:8px 16px;font-size:12px;font-weight:500;color:var(--txt2);cursor:pointer;
+  border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;
+  font-family:var(--sans);transition:color .1s,border-color .1s;}
+.itab:hover{color:var(--txt);}
+.itab.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600;}
+.iview{display:none;} .iview.active{display:block;}
+
+/* ── Example cards ──────────────────────────────────────────── */
+.ex-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.ex-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.ex-hdr{padding:10px 14px;background:var(--overlay);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;}
+.ex-title{font-size:12px;font-weight:600;color:var(--txt);}
+.ex-desc{font-family:var(--text);font-size:11px;color:var(--txt2);margin-top:1px;}
+.ex-body{padding:0;}
+.ex-body .sql{margin:0;border:none;border-radius:0;}
+.copy-btn{font-family:var(--text);font-size:10px;font-weight:600;padding:3px 9px;border-radius:4px;
+  background:none;border:1px solid var(--line-strong);color:var(--txt2);cursor:pointer;
+  transition:background .1s,color .1s;}
+.copy-btn:hover{background:var(--overlay);color:var(--txt);}
+.copy-btn.copied{background:var(--success-bg);border-color:var(--success-txt);color:var(--success-txt);}
+
+@media(max-width:1100px){.ex-grid{grid-template-columns:1fr;}}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media(max-width:900px){.g2,.g3{grid-template-columns:1fr;}.sidebar{width:180px;}}
+/* ── Status icons ───────────────────────────────────────────── */
+.sb-status{margin-left:auto;flex-shrink:0;}
+.icon-done{color:var(--success-txt);}
+@keyframes spin{to{transform:rotate(360deg);}}
+.icon-spin{color:#0047b3;animation:spin 1.2s linear infinite;transform-origin:center;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── SIDEBAR ─────────────────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="sb-brand">
+    <!-- Verizon V logo -->
+    <svg width="22" height="22" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#e10014"/><path d="M9 9h5l6 14h-5z" fill="#fff"/><path d="M17 9h5l-6 14-2.5-6z" fill="#fff" opacity=".75"/></svg>
+    <span class="sb-brand-name">Ontology DB</span>
+  </div>
+  <div class="sb-sect">
+    <div class="sb-lbl">Ontology</div>
+    <div class="sb-link" onclick="go('ontology',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><circle cx="3" cy="4" r="1.5"/><circle cx="13" cy="4" r="1.5"/><circle cx="3" cy="12" r="1.5"/><circle cx="13" cy="12" r="1.5"/><line x1="8" y1="6" x2="3.8" y2="4.8"/><line x1="8" y1="6" x2="12.2" y2="4.8"/><line x1="8" y1="10" x2="3.8" y2="11.2"/><line x1="8" y1="10" x2="12.2" y2="11.2"/></svg>
+      Ontology Builder
+    </div>
+  </div>
+  <div class="sb-sect">
+    <div class="sb-lbl" style="color:var(--brand);letter-spacing:.06em;">✦ New Features</div>
+    <div class="sb-link active" onclick="go('bq',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M5 7h6M5 10h4"/></svg>
+      BigQuery Catalog
+      <span class="sb-status">
+        <svg class="icon-spin" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2a6 6 0 1 1-4.24 1.76" stroke-linecap="round"/></svg>
+      </span>
+    </div>
+    <div class="sb-link" onclick="go('h3',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="8,2 14,5.5 14,10.5 8,14 2,10.5 2,5.5"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg>
+      H3 / MGRS Functions
+      <span class="sb-status">
+        <svg class="icon-done" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8l4 4 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </div>
+    <div class="sb-link" onclick="go('pipe',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9h2l2-4 3 7 2-5 1 2h2"/></svg>
+      JSON PIPE Loading
+      <span class="sb-status">
+        <svg class="icon-done" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8l4 4 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </div>
+  </div>
+  <div class="sb-sect">
+    <div class="sb-lbl" style="color:var(--warn-txt);letter-spacing:.06em;">◎ Roadmap</div>
+    <div class="sb-link" onclick="go('spanner',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6" stroke-dasharray="3,2"/><circle cx="8" cy="8" r="2"/></svg>
+      Cloud Spanner
+      <span class="sb-status">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#7a4f00" stroke-width="2"><circle cx="8" cy="8" r="6" stroke-dasharray="3,2"/></svg>
+      </span>
+    </div>
+  </div>
+  <div class="sb-sect">
+    <div class="sb-lbl">Catalog</div>
+    <div class="sb-link" onclick="go('catalogs',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 2v12M2 8h12"/></svg>
+      Catalog Map
+    </div>
+    <div class="sb-link" onclick="go('ref',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h8M4 8h6M4 12h4"/></svg>
+      Config Reference
+    </div>
+  </div>
+</nav>
+
+<!-- ── MAIN ────────────────────────────────────────────────────────── -->
+<div class="main">
+  <header class="topbar">
+    <div>
+      <div class="topbar-title">Ontology DB Architecture</div>
+      <div class="topbar-sub">Catalog ecosystem · External connectors · Geospatial · JSON PIPE · 4.1.4-verizon</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <span class="bdg bdg-ok"><span class="bdg-dot"></span>H3 · JSON Deployed</span>
+      <span class="bdg bdg-neu" style="background:#fff2cc;color:#7a4f00;">BQ target: Aug 17</span>
+    </div>
+  </header>
+
+  <div class="content">
+
+<!-- ══════════════════════════════════════
+     BQ PANEL
+══════════════════════════════════════ -->
+<div id="bq" class="panel active">
+  <p class="stitle">BigQuery External Catalog — End-to-End Call Flow</p>
+  <div class="cl cl-info" style="margin-bottom:16px;">
+    <h4>What this gives you</h4>
+    Query BigQuery datasets directly from Ontology DB SQL — no ETL, no data movement, no duplication.
+    Analysts use familiar SQL against live BQ data (GKE datasets, GKE resource usage, cost tables, etc.)
+    while Ontology DB handles predicate pushdown, column pruning, and parallel Arrow stream reads.
+    Combine with internal Ontology DB tables for cross-source JOINs in a single query.
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;">
+      <span style="font-family:var(--text);font-size:11px;font-weight:700;color:var(--muted);">Enables:</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Synapse</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">AN360</span>
+    </div>
+  </div>
+
+  <div class="itabs">
+    <button class="itab active" onclick="itab(this,'bq-arch')">Architecture</button>
+    <button class="itab" onclick="itab(this,'bq-flow')">Call Flow</button>
+    <button class="itab" onclick="itab(this,'bq-ex')">Examples</button>
+    <button class="itab" onclick="itab(this,'bq-mv')">MV Query Rewrite</button>
+  </div>
+
+
+  <div id="bq-arch" class="iview active">
+  <svg viewBox="0 0 900 555" style="width:100%;max-height:620px;display:block;font-family:'VZ','Helvetica Neue',Arial,sans-serif;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gFE"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#dceeff"/><stop offset="100%" stop-color="#c8e4ff"/></linearGradient>
+      <linearGradient id="gBE"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e0f4e8"/><stop offset="100%" stop-color="#c8edd4"/></linearGradient>
+      <linearGradient id="gGCP" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff2cc"/><stop offset="100%" stop-color="#fde8a0"/></linearGradient>
+      <marker id="arB" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#0047b3"/></marker>
+      <marker id="arG" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#006625"/></marker>
+      <marker id="arO" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#7a4f00"/></marker>
+      <marker id="arR" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#e10014"/></marker>
+    </defs>
+    <!-- Layer backgrounds -->
+    <rect x="10" y="10"  width="880" height="65"  rx="8" fill="#f8f7f5"    stroke="#d8d5cf" stroke-width="1"/>
+    <rect x="10" y="85"  width="880" height="185" rx="8" fill="url(#gFE)"  stroke="#aad1f7" stroke-width="1"/>
+    <rect x="10" y="280" width="880" height="130" rx="8" fill="url(#gBE)"  stroke="#b3dfc3" stroke-width="1"/>
+    <rect x="10" y="420" width="880" height="110" rx="8" fill="url(#gGCP)" stroke="#f0dda0" stroke-width="1"/>
+    <!-- Layer labels -->
+    <text x="24" y="26"  font-size="9" font-weight="700" letter-spacing="1" fill="#aaa8a3">USER / BI TOOL</text>
+    <text x="24" y="100" font-size="9" font-weight="700" letter-spacing="1" fill="#0047b3">ONTOLOGY DB — FRONTEND (FE)</text>
+    <text x="24" y="295" font-size="9" font-weight="700" letter-spacing="1" fill="#006625">ONTOLOGY DB — BACKEND (BE)</text>
+    <text x="24" y="435" font-size="9" font-weight="700" letter-spacing="1" fill="#7a4f00">GOOGLE CLOUD PLATFORM</text>
+    <!-- User layer -->
+    <rect x="50"  y="28" width="115" height="38" rx="5" fill="#fff" stroke="#d8d5cf"/>
+    <text x="107" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#000">BI Tools</text>
+    <text x="107" y="58" text-anchor="middle" font-size="9"  fill="#716f6d">Tableau / Superset</text>
+    <rect x="185" y="28" width="115" height="38" rx="5" fill="#fff" stroke="#d8d5cf"/>
+    <text x="242" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#000">SQL Client</text>
+    <text x="242" y="58" text-anchor="middle" font-size="9"  fill="#716f6d">MySQL protocol</text>
+    <rect x="320" y="28" width="115" height="38" rx="5" fill="#fff" stroke="#d8d5cf"/>
+    <text x="377" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#000">Application</text>
+    <text x="377" y="58" text-anchor="middle" font-size="9"  fill="#716f6d">JDBC / REST</text>
+    <!-- FE row 1 -->
+    <rect x="25"  y="112" width="135" height="48" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="92"  y="130" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">Parser + Analyzer</text>
+    <text x="92"  y="145" text-anchor="middle" font-size="9"  fill="#716f6d">SQL → AST → Plan</text>
+    <rect x="175" y="112" width="165" height="48" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="257" y="130" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">Optimizer</text>
+    <text x="257" y="143" text-anchor="middle" font-size="9"  fill="#716f6d">BigQueryScanRule</text>
+    <text x="257" y="155" text-anchor="middle" font-size="9"  fill="#716f6d">MergeLimitDirect · PruneColumns</text>
+    <rect x="355" y="112" width="165" height="48" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="437" y="130" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">BigQueryMetadata</text>
+    <text x="437" y="143" text-anchor="middle" font-size="9"  fill="#716f6d">listDatasets · getTable</text>
+    <text x="437" y="155" text-anchor="middle" font-size="9"  fill="#716f6d">getRemoteFiles → createReadSession</text>
+    <rect x="535" y="112" width="165" height="48" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="617" y="130" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">BigQueryConnector</text>
+    <text x="617" y="143" text-anchor="middle" font-size="9"  fill="#716f6d">GoogleCredentials (ADC / WIF)</text>
+    <text x="617" y="155" text-anchor="middle" font-size="9"  fill="#716f6d">BigQueryReadClient (gRPC)</text>
+    <rect x="715" y="112" width="155" height="48" rx="5" fill="#fff" stroke="#e10014" stroke-width="1.5"/>
+    <text x="792" y="130" text-anchor="middle" font-size="11" font-weight="600" fill="#e10014">MV Query Cache</text>
+    <text x="792" y="143" text-anchor="middle" font-size="9"  fill="#716f6d">Transparent rewrite</text>
+    <text x="792" y="155" text-anchor="middle" font-size="9"  fill="#e10014">OlapScan → sub-ms latency</text>
+    <!-- FE row 2 -->
+    <rect x="175" y="180" width="330" height="40" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="340" y="197" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">BigQueryScanNode + PlanFragmentBuilder</text>
+    <text x="340" y="211" text-anchor="middle" font-size="9"  fill="#716f6d">TScanRangeLocations · bigquery_split_infos · use_bigquery_jni_reader=true</text>
+    <!-- BE layer -->
+    <rect x="25"  y="298" width="190" height="46" rx="5" fill="#fff" stroke="#b3dfc3"/>
+    <text x="120" y="316" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">HiveConnector / JniScanner</text>
+    <text x="120" y="329" text-anchor="middle" font-size="9"  fill="#716f6d">create_bigquery_jni_scanner()</text>
+    <text x="120" y="340" text-anchor="middle" font-size="9"  fill="#716f6d">JniScanner.do_open() / get_next()</text>
+    <rect x="230" y="298" width="200" height="46" rx="5" fill="#fff" stroke="#b3dfc3"/>
+    <text x="330" y="316" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">bigquery-reader.jar</text>
+    <text x="330" y="329" text-anchor="middle" font-size="9"  fill="#716f6d">BigQuerySplitScannerFactory (JNI)</text>
+    <text x="330" y="340" text-anchor="middle" font-size="9"  fill="#716f6d">BigQuerySplitScanner.read()</text>
+    <rect x="445" y="298" width="190" height="46" rx="5" fill="#fff" stroke="#b3dfc3"/>
+    <text x="540" y="316" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">Arrow IPC Reader</text>
+    <text x="540" y="329" text-anchor="middle" font-size="9"  fill="#716f6d">VectorLoader.load(ArrowRecordBatch)</text>
+    <text x="540" y="340" text-anchor="middle" font-size="9"  fill="#716f6d">→ ChunkPtr returned to pipeline</text>
+    <rect x="650" y="298" width="220" height="46" rx="5" fill="#fff" stroke="#b3dfc3"/>
+    <text x="760" y="316" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">BE Execution Pipeline</text>
+    <text x="760" y="329" text-anchor="middle" font-size="9"  fill="#716f6d">Filter · Project · Aggregate</text>
+    <text x="760" y="340" text-anchor="middle" font-size="9"  fill="#716f6d">Result rows → FE → Client</text>
+    <!-- GCP layer -->
+    <rect x="25"  y="448" width="195" height="50" rx="5" fill="#fff" stroke="#f0dda0"/>
+    <text x="122" y="466" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">BigQuery REST API</text>
+    <text x="122" y="479" text-anchor="middle" font-size="9"  fill="#716f6d">listDatasets · getTable</text>
+    <text x="122" y="490" text-anchor="middle" font-size="9"  fill="#716f6d">bigquery.googleapis.com</text>
+    <rect x="235" y="448" width="225" height="50" rx="5" fill="#fff" stroke="#f0dda0"/>
+    <text x="347" y="466" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">BigQuery Storage Read API</text>
+    <text x="347" y="479" text-anchor="middle" font-size="9"  fill="#716f6d">createReadSession · readRows (gRPC)</text>
+    <text x="347" y="490" text-anchor="middle" font-size="9"  fill="#716f6d">bigquerystorage.googleapis.com:443</text>
+    <rect x="475" y="448" width="180" height="50" rx="5" fill="#fff" stroke="#f0dda0"/>
+    <text x="565" y="466" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">BigQuery Tables</text>
+    <text x="565" y="479" text-anchor="middle" font-size="9"  fill="#716f6d">Datasets · Tables · Views</text>
+    <text x="565" y="490" text-anchor="middle" font-size="9"  fill="#716f6d">Materialized views</text>
+    <rect x="670" y="448" width="200" height="50" rx="5" fill="#fff" stroke="#f0dda0"/>
+    <text x="770" y="466" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">IAM / Workload Identity</text>
+    <text x="770" y="479" text-anchor="middle" font-size="9"  fill="#716f6d">GKE WIF → SA impersonation</text>
+    <text x="770" y="490" text-anchor="middle" font-size="9"  fill="#716f6d">ADC — no key file needed</text>
+    <!-- Arrows: User → FE -->
+    <line x1="107" y1="66" x2="92"  y2="110" stroke="#0047b3" stroke-width="1.5" marker-end="url(#arB)"/>
+    <line x1="242" y1="66" x2="242" y2="110" stroke="#0047b3" stroke-width="1.5" marker-end="url(#arB)"/>
+    <line x1="377" y1="66" x2="330" y2="110" stroke="#0047b3" stroke-width="1.5" marker-end="url(#arB)"/>
+    <!-- FE row1 horizontal -->
+    <line x1="160" y1="136" x2="173" y2="136" stroke="#0047b3" stroke-width="1.5" marker-end="url(#arB)"/>
+    <line x1="340" y1="136" x2="353" y2="136" stroke="#0047b3" stroke-width="1.5" marker-end="url(#arB)"/>
+    <line x1="520" y1="136" x2="533" y2="136" stroke="#0047b3" stroke-width="1.5" marker-end="url(#arB)"/>
+    <!-- Optimizer → ScanNode -->
+    <line x1="257" y1="160" x2="280" y2="178" stroke="#0047b3" stroke-width="1.5" marker-end="url(#arB)"/>
+    <!-- Connector → ScanNode -->
+    <line x1="617" y1="160" x2="505" y2="178" stroke="#0047b3" stroke-width="1.5" marker-end="url(#arB)"/>
+    <!-- ScanNode → BE -->
+    <line x1="280" y1="220" x2="148" y2="296" stroke="#006625" stroke-width="1.5" stroke-dasharray="5,2" marker-end="url(#arG)"/>
+    <text x="170" y="262" font-size="8" fill="#006625" transform="rotate(-28,170,262)">scan ranges dispatched</text>
+    <!-- BE horizontal -->
+    <line x1="215" y1="321" x2="228" y2="321" stroke="#006625" stroke-width="1.5" marker-end="url(#arG)"/>
+    <line x1="430" y1="321" x2="443" y2="321" stroke="#006625" stroke-width="1.5" marker-end="url(#arG)"/>
+    <line x1="635" y1="321" x2="648" y2="321" stroke="#006625" stroke-width="1.5" marker-end="url(#arG)"/>
+    <!-- bigquery-reader → GCP Storage (gRPC) -->
+    <line x1="347" y1="344" x2="347" y2="446" stroke="#7a4f00" stroke-width="2" stroke-dasharray="5,2" marker-end="url(#arO)"/>
+    <text x="354" y="400" font-size="9" fill="#7a4f00">Arrow streams (gRPC)</text>
+    <!-- FE Metadata → GCP REST -->
+    <path d="M420,160 Q200,310 145,446" stroke="#7a4f00" stroke-width="1.5" fill="none" stroke-dasharray="4,2" marker-end="url(#arO)"/>
+    <!-- GCP Storage → Tables -->
+    <line x1="460" y1="473" x2="473" y2="473" stroke="#7a4f00" stroke-width="1.5" marker-end="url(#arO)"/>
+    <!-- Tables → IAM -->
+    <line x1="655" y1="473" x2="668" y2="473" stroke="#7a4f00" stroke-width="1.5" marker-end="url(#arO)"/>
+    <!-- MV bypass arc -->
+    <path d="M792,160 Q865,230 770,296" stroke="#e10014" stroke-width="2" fill="none" stroke-dasharray="6,3" marker-end="url(#arR)"/>
+    <text x="856" y="228" font-size="9" fill="#e10014" font-weight="700">MV rewrite</text>
+    <text x="852" y="240" font-size="9" fill="#e10014">no BQ call</text>
+    <!-- Legend -->
+    <rect x="20" y="508" width="860" height="22" rx="4" fill="#f8f7f5" stroke="#d8d5cf"/>
+    <line x1="32"  y1="519" x2="52"  y2="519" stroke="#0047b3" stroke-width="2" marker-end="url(#arB)"/>
+    <text x="56"  y="523" font-size="9" fill="#0047b3">SQL / plan flow</text>
+    <line x1="162" y1="519" x2="182" y2="519" stroke="#006625" stroke-width="2" marker-end="url(#arG)"/>
+    <text x="186" y="523" font-size="9" fill="#006625">Data flow (Arrow)</text>
+    <line x1="302" y1="519" x2="322" y2="519" stroke="#7a4f00" stroke-width="2" stroke-dasharray="4,2" marker-end="url(#arO)"/>
+    <text x="326" y="523" font-size="9" fill="#7a4f00">gRPC / REST to GCP</text>
+    <line x1="460" y1="519" x2="480" y2="519" stroke="#e10014" stroke-width="2" stroke-dasharray="4,2" marker-end="url(#arR)"/>
+    <text x="484" y="523" font-size="9" fill="#e10014">MV rewrite bypass (zero BQ call)</text>
+    <rect x="668" y="513" width="10" height="10" rx="2" fill="#fff" stroke="#e10014"/>
+    <text x="682" y="523" font-size="9" fill="#e10014">Red border = MV query cache</text>
+  </svg>
+  </div>
+
+  <div id="bq-flow" class="iview">
+  <div class="g2">
+    <!-- Phase 1 -->
+    <div class="card">
+      <div class="cl cl-info">
+        <h4>Phase 1 — Catalog creation &amp; metadata</h4>
+        <code style="background:none;padding:0;color:inherit;font-family:var(--mono);font-size:11px;">CREATE EXTERNAL CATALOG … SHOW DATABASES … DESCRIBE TABLE</code>
+      </div>
+
+      <div class="flow">
+        <div class="frow">
+          <div class="flabel fl-user">User</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">1</div>
+              <div class="fbody">
+                <div class="ft">CREATE EXTERNAL CATALOG</div>
+                <div class="fd">type=bigquery · bigquery.project.id · bigquery.auth.type</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="farr">↓</div>
+        <div class="frow">
+          <div class="flabel fl-fe">FE</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">2</div>
+              <div class="fbody">
+                <div class="ft">BigQueryConnector() initialised</div>
+                <div class="fd">BigQueryProperties.parse() → GoogleCredentials.getApplicationDefault()</div>
+                <div class="fw">⚠ createScopedRequired() check — skips createScoped() on GKE WIF to prevent gRPC token refresh failure</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">3</div>
+              <div class="fbody">
+                <div class="ft">BigQuery REST client + BigQueryReadClient (gRPC)</div>
+                <div class="fd">bigquery.googleapis.com · bigquerystorage.googleapis.com:443</div>
+                <div class="fd">Optional overrides: bigquery.api.endpoint · bigquery.storage.endpoint</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="farr">↓</div>
+        <div class="frow">
+          <div class="flabel fl-gcp">GCP</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">4</div>
+              <div class="fbody">
+                <div class="ft">SHOW DATABASES → BigQuery.listDatasets()</div>
+                <div class="fd">REST API → Page&lt;Dataset&gt; → dataset names</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">5</div>
+              <div class="fbody">
+                <div class="ft">DESCRIBE → BigQuery.getTable() + getSchema()</div>
+                <div class="fd">BigQuerySchemaUtils.toOntologyDBColumns() → column definitions</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div class="card">
+      <div class="cl cl-info">
+        <h4>Phase 2 — Query execution</h4>
+        <code style="background:none;padding:0;color:inherit;font-family:var(--mono);font-size:11px;">SELECT … FROM bq_catalog.dataset.table WHERE … LIMIT 5</code>
+      </div>
+
+      <div class="flow">
+        <div class="frow">
+          <div class="flabel fl-fe">FE</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">6</div>
+              <div class="fbody">
+                <div class="ft">Optimizer → BigQueryScanImplementationRule</div>
+                <div class="fd">LogicalBigQueryScan → PhysicalBigQueryScan · MergeLimitDirect · PushDownPredicate · PruneColumns</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">7</div>
+              <div class="fbody">
+                <div class="ft">BigQueryMetadata.getRemoteFiles()</div>
+                <div class="fd">BigQueryReadClient.createReadSession() → N streams + Arrow schema + estimatedRowCount</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">8</div>
+              <div class="fbody">
+                <div class="ft">BigQueryScanNode → TScanRangeLocations</div>
+                <div class="fd">One entry per stream · bigquery_split_infos map · use_bigquery_jni_reader = true</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="farr">↓</div>
+        <div class="frow">
+          <div class="flabel fl-be">BE</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">9</div>
+              <div class="fbody">
+                <div class="ft">HiveConnector → create_bigquery_jni_scanner()</div>
+                <div class="fd">JniScanner loads BigQuerySplitScannerFactory via Java JNI</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">10</div>
+              <div class="fbody">
+                <div class="ft">BigQueryReadClient.readRows(stream) gRPC → Arrow IPC</div>
+                <div class="fd">VectorLoader.load(ArrowRecordBatch) → JNI bridge → Ontology DB ChunkPtr</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /g2 -->
+
+  <div class="cl cl-ok mt3" style="margin-bottom:0">
+    <h4>Optimizer rules wired for LOGICAL_BIGQUERY_SCAN</h4>
+    MergeLimitDirectRule · MultiOpPattern · PushDownPredicateScanRule · PruneHDFSScanColumnRule ·
+    ExternalScanPartitionPruneRule · PruneEmptyScanRule · PruneScanColumnRule · PushDownPredicateToExternalTableScanRule
+  </div>
+  </div><!-- /bq-flow -->
+
+  <div id="bq-ex" class="iview">
+  <div class="ex-grid">
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Create catalog (GKE Workload Identity)</div><div class="ex-desc">No credentials needed — uses cluster ADC</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">CREATE EXTERNAL CATALOG</span> bq_np
+<span class="kw">PROPERTIES</span>(
+  <span class="str">"type"</span>                = <span class="str">"bigquery"</span>,
+  <span class="str">"bigquery.project.id"</span> = <span class="str">"vz-it-np-jpuv-dev-anpdo-0"</span>,
+  <span class="str">"bigquery.auth.type"</span>  = <span class="str">"application_default"</span>
+);</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Browse datasets &amp; schema</div><div class="ex-desc">Metadata from BigQuery REST API</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">SET CATALOG</span> bq_np;
+<span class="kw">SHOW DATABASES</span>;
+<span class="kw">USE</span> gke_anpdev_np_us_east4_jpuv;
+<span class="kw">DESCRIBE</span> gke_cluster_resource_usage;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Filter &amp; aggregate query</div><div class="ex-desc">Predicates pushed to BigQuery Storage streams</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">SELECT</span> namespace,
+       <span class="fn">AVG</span>(fraction)  AS avg_util,
+       <span class="fn">MAX</span>(fraction)  AS peak_util,
+       <span class="fn">COUNT</span>(*)       AS records
+<span class="kw">FROM</span>   bq_np.gke_anpdev_np_us_east4_jpuv.gke_cluster_resource_usage
+<span class="kw">WHERE</span>  start_time &gt; <span class="str">'2026-08-01'</span>
+  <span class="kw">AND</span>  fraction    &gt; 0.5
+<span class="kw">GROUP BY</span> namespace
+<span class="kw">ORDER BY</span> peak_util <span class="kw">DESC</span>;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Cross-catalog JOIN (BQ + Ontology DB)</div><div class="ex-desc">Federated — no data movement</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">SELECT</span> b.namespace, b.fraction, c.team_owner
+<span class="kw">FROM</span>   bq_np.gke_anpdev_np_us_east4_jpuv
+           .gke_cluster_resource_usage b
+<span class="kw">JOIN</span>   default_catalog.ops.cluster_config c
+       <span class="kw">ON</span> b.cluster_name = c.cluster_name
+<span class="kw">WHERE</span>  b.fraction &gt; 0.9;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Materialized view from BigQuery</div><div class="ex-desc">Cache BQ results in Ontology DB for sub-second repeats</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">CREATE MATERIALIZED VIEW</span> mv_gke_namespaces
+<span class="kw">DISTRIBUTED BY HASH</span>(namespace) <span class="kw">BUCKETS</span> 4
+<span class="kw">REFRESH MANUAL AS</span>
+<span class="kw">SELECT</span> namespace,
+       <span class="fn">AVG</span>(fraction) avg_util, <span class="fn">COUNT</span>(*) cnt
+<span class="kw">FROM</span>   bq_np.gke_anpdev_np_us_east4_jpuv
+           .gke_cluster_resource_usage
+<span class="kw">GROUP BY</span> namespace;
+
+<span class="kw">REFRESH MATERIALIZED VIEW</span> mv_gke_namespaces;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Ontology DB VIEW over BigQuery table</div><div class="ex-desc">Virtual view — no data copied</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">CREATE DATABASE IF NOT EXISTS</span> bq_views;
+<span class="kw">USE</span> bq_views;
+<span class="kw">CREATE VIEW</span> gke_high_utilisation <span class="kw">AS</span>
+<span class="kw">SELECT</span> cluster_name, namespace,
+       resource_name, fraction, start_time
+<span class="kw">FROM</span>   bq_np.gke_anpdev_np_us_east4_jpuv
+           .gke_cluster_resource_usage
+<span class="kw">WHERE</span>  fraction &gt; 0.8;</div></div>
+    </div>
+  </div>
+  </div><!-- /bq-ex -->
+
+  <!-- ── MV QUERY REWRITE TAB ──────────────────────────────── -->
+  <div id="bq-mv" class="iview">
+
+    <div style="background:var(--hdr);border-radius:8px;padding:20px 24px;margin-bottom:20px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:var(--brand);border-radius:50%;opacity:.06;"></div>
+      <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:6px;">Transparent Query Rewrite: BigQuery → Ontology DB MV</div>
+      <div style="font-family:var(--text);font-size:13px;color:#aaa8a3;line-height:1.6;max-width:760px;">
+        Define a Materialized View over a BigQuery external table. Ontology DB automatically rewrites
+        matching queries to use the local MV cache — <strong style="color:#90cdf4;">zero BigQuery API calls,
+        sub-millisecond latency</strong> — without any change to the user's SQL.
+      </div>
+    </div>
+
+    <div class="g2" style="margin-bottom:20px;">
+      <div class="card">
+        <p class="stitle" style="margin-bottom:14px;">How rewrite works</p>
+        <div style="display:flex;flex-direction:column;">
+          <div style="display:flex;gap:12px;padding:10px 0;">
+            <div style="min-width:28px;height:28px;background:var(--brand);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">1</div>
+            <div><div style="font-size:13px;font-weight:600;">Define MV over BigQuery table</div><div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-top:2px;">MV stores aggregated BQ data locally. Refreshed on schedule or manually.</div></div>
+          </div>
+          <div style="margin-left:13px;width:2px;height:16px;background:var(--line);"></div>
+          <div style="display:flex;gap:12px;padding:10px 0;">
+            <div style="min-width:28px;height:28px;background:var(--brand);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">2</div>
+            <div><div style="font-size:13px;font-weight:600;">User runs any matching query against BQ table</div><div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-top:2px;">Standard SQL against <code style="font-size:10px;">bq_catalog.dataset.table</code> — no special syntax.</div></div>
+          </div>
+          <div style="margin-left:13px;width:2px;height:16px;background:var(--line);"></div>
+          <div style="display:flex;gap:12px;padding:10px 0;">
+            <div style="min-width:28px;height:28px;background:var(--brand);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">3</div>
+            <div><div style="font-size:13px;font-weight:600;">Optimizer checks MV rewrite candidates</div><div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-top:2px;">Tests whether predicates, projections, and aggregations can be served from any active MV.</div></div>
+          </div>
+          <div style="margin-left:13px;width:2px;height:16px;background:var(--line);"></div>
+          <div style="display:flex;gap:12px;padding:10px 0;">
+            <div style="min-width:28px;height:28px;background:var(--success-txt);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">✓</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--success-txt);">Rewrite: local MV — zero BigQuery call</div><div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-top:2px;"><strong>Millisecond response</strong> from Ontology DB BE regardless of BQ table size.</div></div>
+          </div>
+          <div style="margin-left:13px;width:2px;height:16px;background:var(--line);"></div>
+          <div style="display:flex;gap:12px;padding:10px 0;">
+            <div style="min-width:28px;height:28px;background:var(--muted);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">↓</div>
+            <div><div style="font-size:13px;font-weight:600;color:var(--txt2);">No match: falls back to live BigQuery scan</div><div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-top:2px;">Normal BQ Storage API path — transparent to user.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="card" style="border-left:3px solid var(--success-txt);">
+          <div style="font-size:13px;font-weight:700;color:var(--success-txt);margin-bottom:5px;">⚡ Performance</div>
+          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Dashboard queries that previously took 30–120 s against BigQuery Storage streams return in <strong>&lt;50 ms</strong> from the local MV. Aggregations pre-computed at refresh time.</div>
+        </div>
+        <div class="card" style="border-left:3px solid var(--info-txt);">
+          <div style="font-size:13px;font-weight:700;color:var(--info-txt);margin-bottom:5px;">💰 Cost reduction</div>
+          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">BigQuery charges per TB scanned via Storage Read API. An MV refresh scans BQ once — all subsequent matching queries hit Ontology DB at <strong>zero additional BQ cost</strong>.</div>
+        </div>
+        <div class="card" style="border-left:3px solid var(--warn-txt);">
+          <div style="font-size:13px;font-weight:700;color:var(--warn-txt);margin-bottom:5px;">⚠ Staleness trade-off</div>
+          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">MV is only as fresh as the last refresh. Use <code style="font-size:10px;">REFRESH ASYNC EVERY (INTERVAL 1 HOUR)</code> for near-real-time or <code style="font-size:10px;">REFRESH MANUAL</code> for controlled windows. Live BQ fallback ensures correctness.</div>
+        </div>
+        <div class="card" style="border-left:3px solid var(--brand);">
+          <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:5px;">🔄 Transparent to BI tools</div>
+          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Tableau, Superset, Grafana connect once to Ontology DB with standard SQL — no awareness of whether results come from BQ or MV. Optimizer decides silently.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ex-grid">
+      <div class="ex-card">
+        <div class="ex-hdr"><div><div class="ex-title">Step 1 — Create MV over BQ table (hourly)</div><div class="ex-desc">Pre-aggregate namespace utilisation</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+        <div class="ex-body"><div class="sql"><span class="kw">CREATE MATERIALIZED VIEW</span> mv_gke_namespace_util
+<span class="kw">DISTRIBUTED BY HASH</span>(namespace) <span class="kw">BUCKETS</span> 8
+<span class="kw">REFRESH ASYNC EVERY</span> (<span class="kw">INTERVAL</span> 1 <span class="kw">HOUR</span>)
+<span class="kw">AS</span>
+<span class="kw">SELECT</span> namespace, <span class="fn">DATE</span>(start_time) AS dt,
+       <span class="fn">AVG</span>(fraction) AS avg_util, <span class="fn">MAX</span>(fraction) AS peak_util,
+       <span class="fn">COUNT</span>(*) AS samples
+<span class="kw">FROM</span>   bq_np.gke_anpdev_np_us_east4_jpuv
+           .gke_cluster_resource_usage
+<span class="kw">GROUP BY</span> namespace, <span class="fn">DATE</span>(start_time);</div></div>
+      </div>
+      <div class="ex-card">
+        <div class="ex-hdr"><div><div class="ex-title">Step 2 — User query (unchanged)</div><div class="ex-desc">Optimizer silently rewrites to use the MV</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+        <div class="ex-body"><div class="sql"><span class="cmt">-- User writes against BQ table as normal</span>
+<span class="kw">SELECT</span> namespace, <span class="fn">DATE</span>(start_time) AS dt,
+       <span class="fn">AVG</span>(fraction) AS avg_util, <span class="fn">MAX</span>(fraction) AS peak_util,
+       <span class="fn">COUNT</span>(*) AS samples
+<span class="kw">FROM</span>   bq_np.gke_anpdev_np_us_east4_jpuv
+           .gke_cluster_resource_usage
+<span class="kw">WHERE</span>  start_time &gt;= <span class="str">'2026-08-01'</span>
+<span class="kw">GROUP BY</span> namespace, <span class="fn">DATE</span>(start_time);
+<span class="cmt">-- → Plan rewritten to scan mv_gke_namespace_util</span></div></div>
+      </div>
+      <div class="ex-card">
+        <div class="ex-hdr"><div><div class="ex-title">Verify rewrite in EXPLAIN</div><div class="ex-desc">OlapScanNode = MV hit; BigQueryScanNode = BQ call</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+        <div class="ex-body"><div class="sql"><span class="kw">EXPLAIN</span>
+<span class="kw">SELECT</span> namespace, <span class="fn">AVG</span>(fraction)
+<span class="kw">FROM</span>   bq_np.gke_anpdev_np_us_east4_jpuv
+           .gke_cluster_resource_usage
+<span class="kw">GROUP BY</span> namespace;
+<span class="cmt">-- MV hit:  OlapScanNode TABLE: mv_gke_namespace_util
+-- BQ call: BigQueryScanNode TABLE: gke_cluster_resource_usage</span></div></div>
+      </div>
+      <div class="ex-card">
+        <div class="ex-hdr"><div><div class="ex-title">MV over BQ + JOIN with internal table</div><div class="ex-desc">Cross-catalog rewrite also works</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+        <div class="ex-body"><div class="sql"><span class="kw">CREATE MATERIALIZED VIEW</span> mv_enriched_util
+<span class="kw">DISTRIBUTED BY HASH</span>(namespace) <span class="kw">BUCKETS</span> 8
+<span class="kw">REFRESH ASYNC EVERY</span> (<span class="kw">INTERVAL</span> 6 <span class="kw">HOUR</span>) <span class="kw">AS</span>
+<span class="kw">SELECT</span> b.namespace, b.fraction,
+       c.team_owner, c.cost_centre
+<span class="kw">FROM</span>   bq_np.gke_anpdev_np_us_east4_jpuv
+           .gke_cluster_resource_usage b
+<span class="kw">JOIN</span>   default_catalog.ops.cluster_config c
+       <span class="kw">ON</span> b.cluster_name = c.cluster_name;
+<span class="cmt">-- Queries with this JOIN pattern hit the MV</span></div></div>
+      </div>
+      <div class="ex-card">
+        <div class="ex-hdr"><div><div class="ex-title">Manual refresh &amp; status check</div><div class="ex-desc">Force refresh, monitor last state</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+        <div class="ex-body"><div class="sql"><span class="kw">REFRESH MATERIALIZED VIEW</span> mv_gke_namespace_util;
+
+<span class="kw">SELECT</span> last_refresh_state,
+       last_refresh_finished_time,
+       last_refresh_error_message, rows
+<span class="kw">FROM</span>   information_schema.materialized_views
+<span class="kw">WHERE</span>  name = <span class="str">'mv_gke_namespace_util'</span>;</div></div>
+      </div>
+      <div class="ex-card">
+        <div class="ex-hdr"><div><div class="ex-title">Enable / disable rewrite per session</div><div class="ex-desc">Force live BQ when freshness is critical</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+        <div class="ex-body"><div class="sql"><span class="cmt">-- Use MV rewrite (default)</span>
+<span class="kw">SET</span> enable_materialized_view_rewrite = <span class="str">true</span>;
+
+<span class="cmt">-- Bypass — go direct to BigQuery</span>
+<span class="kw">SET</span> enable_materialized_view_rewrite = <span class="str">false</span>;
+
+<span class="cmt">-- See rewrite decision detail</span>
+<span class="kw">EXPLAIN VERBOSE</span>
+<span class="kw">SELECT</span> namespace, <span class="fn">AVG</span>(fraction)
+<span class="kw">FROM</span>   bq_np.gke_anpdev_np_us_east4_jpuv
+           .gke_cluster_resource_usage
+<span class="kw">GROUP BY</span> namespace;</div></div>
+      </div>
+    </div>
+
+    <div class="cl cl-ok" style="margin-top:20px;margin-bottom:0;">
+      <h4>When to use MV rewrite with BigQuery</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:8px;font-family:var(--text);font-size:12px;line-height:1.6;">
+        <div><strong>✓ Use it for</strong><br>Dashboard / BI queries · Repeat aggregations · Cost-sensitive workloads · Offline resilience · Synapse / AN360 reporting layers</div>
+        <div><strong>✗ Not suitable for</strong><br>Real-time data (&lt;1 min freshness) · Ad-hoc exploratory queries · Queries with user-specific filters not covered by MV</div>
+        <div><strong>💡 Best practice</strong><br>Define MVs at the granularity BI tools query (daily/hourly). Layer fine-grained MVs over coarse ones for multi-resolution dashboards.</div>
+      </div>
+    </div>
+
+  </div><!-- /bq-mv -->
+
+</div>
+
+<!-- ══════════════════════════════════════
+     H3 PANEL
+══════════════════════════════════════ -->
+<div id="h3" class="panel">
+  <p class="stitle">H3 Geospatial &amp; MGRS Functions — Call Flow</p>
+  <div class="cl cl-ok" style="margin-bottom:20px;">
+    <h4>What this gives you</h4>
+    Native geospatial indexing inside Ontology DB SQL — no external GIS engine required.
+    H3 hexagonal grid functions let network, coverage, and ops teams aggregate signal data,
+    alarm density, and device locations at configurable resolutions (cell size ~0.9 m² to ~4,250,546 km²).
+    MGRS functions enable NATO-grid coordinate conversion for field operations and defence integrations.
+    All 40 H3 + 3 MGRS functions run as vectorised BE expressions — zero serialisation overhead.
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;">
+      <span style="font-family:var(--text);font-size:11px;font-weight:700;color:var(--muted);">Enables:</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Synapse</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">AN360</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Impact Assessment</span>
+    </div>
+  </div>
+
+  <div class="itabs">
+    <button class="itab active" onclick="itab(this,'h3-flow')">Call Flow</button>
+    <button class="itab" onclick="itab(this,'h3-ex')">Examples</button>
+  </div>
+
+  <div id="h3-flow" class="iview active">
+  <div class="g2">
+    <div class="card">
+      <div class="cl cl-info">
+        <h4>H3 example</h4>
+        <code style="background:none;padding:0;color:inherit;font-family:var(--mono);font-size:11px;">SELECT geoToH3(40.7128, -74.0060, 9) AS nyc_cell</code>
+      </div>
+      <div class="flow">
+        <div class="frow">
+          <div class="flabel fl-fe">FE</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">1</div>
+              <div class="fbody">
+                <div class="ft">functions.py → ID 120015 "geoToH3"</div>
+                <div class="fd">args [DOUBLE, DOUBLE, INT] → BIGINT · TFunction sent to BE in plan fragment</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="farr">↓</div>
+        <div class="frow">
+          <div class="flabel fl-be">BE</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">2</div>
+              <div class="fbody">
+                <div class="ft">BuiltinFunctions::find_builtin_function(120015)</div>
+                <div class="fd">Registered at load time by H3Functions_initialize() __attribute__((constructor))</div>
+                <div class="fw">⚠ fix: <code style="color:inherit;font-size:10px;">#include "gen_cpp/opcode/H3Functions.inc"</code> was missing from h3_functions.cpp</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">3</div>
+              <div class="fbody">
+                <div class="ft">H3Functions::geo_to_h3() → H3 v4.1.0 library</div>
+                <div class="fd">latLngToCell(&amp;LatLng{lat,lng}, res, &amp;H3Index) → BIGINT column</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">4</div>
+              <div class="fbody">
+                <div class="ft">Result: <code style="font-size:11px;">621221507452895231</code></div>
+                <div class="fd">NYC resolution 9 · hex area ≈ 105,332 m²</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cl cl-warn mt2" style="margin-bottom:0">
+        <h4>Build note</h4>
+        H3 v4.1.0 pre-downloaded in CI <code style="color:inherit;font-size:10px;">before_script</code> → <code style="color:inherit;font-size:10px;">docker/artifacts/</code>.
+        GitHub unreachable from Kaniko pods — Dockerfile COPYs the tarball instead of wget.
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="stitle" style="margin-bottom:4px;">All supported functions (40 H3 + 3 MGRS)</p>
+      <div style="font-family:var(--text);font-size:10px;color:var(--muted);margin-bottom:10px;">Registered via gen_cpp/opcode/H3Functions.inc · MgrsFunctions.inc</div>
+      <table class="tbl">
+        <thead><tr><th>Function</th><th>Arguments</th><th>Returns</th></tr></thead>
+        <tbody>
+          <tr><td>geoToH3</td><td>lat DOUBLE, lng DOUBLE, res INT</td><td>BIGINT</td></tr>
+          <tr><td>h3ToGeoLat / h3ToGeoLng</td><td>cell BIGINT</td><td>DOUBLE</td></tr>
+          <tr><td>h3IsValid</td><td>cell BIGINT</td><td>BOOLEAN</td></tr>
+          <tr><td>h3GetResolution</td><td>cell BIGINT</td><td>INT</td></tr>
+          <tr><td>h3GetBaseCell</td><td>cell BIGINT</td><td>INT</td></tr>
+          <tr><td>h3ToString</td><td>cell BIGINT</td><td>VARCHAR</td></tr>
+          <tr><td>stringToH3</td><td>hex VARCHAR</td><td>BIGINT</td></tr>
+          <tr><td>h3IsResClassIII</td><td>cell BIGINT</td><td>BOOLEAN</td></tr>
+          <tr><td>h3IsPentagon</td><td>cell BIGINT</td><td>BOOLEAN</td></tr>
+          <tr><td>h3HexAreaM2 / h3HexAreaKm2</td><td>res INT</td><td>DOUBLE</td></tr>
+          <tr><td>h3CellAreaM2 / h3CellAreaRads2</td><td>cell BIGINT</td><td>DOUBLE</td></tr>
+          <tr><td>h3NumHexagons</td><td>res INT</td><td>BIGINT</td></tr>
+          <tr><td>h3EdgeAngle</td><td>res INT</td><td>DOUBLE</td></tr>
+          <tr><td>h3EdgeLengthM / h3EdgeLengthKm</td><td>res INT</td><td>DOUBLE</td></tr>
+          <tr><td>h3ExactEdgeLengthM / Km / Rads</td><td>edge BIGINT</td><td>DOUBLE</td></tr>
+          <tr><td>h3ToParent</td><td>cell BIGINT, res INT</td><td>BIGINT</td></tr>
+          <tr><td>h3ToCenterChild</td><td>cell BIGINT, res INT</td><td>BIGINT</td></tr>
+          <tr><td>h3ToChildren</td><td>cell BIGINT, res INT</td><td>ARRAY&lt;BIGINT&gt;</td></tr>
+          <tr><td>h3IndexesAreNeighbors</td><td>a BIGINT, b BIGINT</td><td>BOOLEAN</td></tr>
+          <tr><td>h3Distance</td><td>a BIGINT, b BIGINT</td><td>BIGINT</td></tr>
+          <tr><td>h3PointDistM / Km / Rads</td><td>lat1,lng1,lat2,lng2 DOUBLE</td><td>DOUBLE</td></tr>
+          <tr><td>h3Line</td><td>start BIGINT, end BIGINT</td><td>ARRAY&lt;BIGINT&gt;</td></tr>
+          <tr><td>h3kRing</td><td>cell BIGINT, k INT</td><td>ARRAY&lt;BIGINT&gt;</td></tr>
+          <tr><td>h3HexRing</td><td>cell BIGINT, k INT</td><td>ARRAY&lt;BIGINT&gt;</td></tr>
+          <tr><td>h3GetFaces</td><td>cell BIGINT</td><td>ARRAY&lt;INT&gt;</td></tr>
+          <tr><td>h3GetRes0Indexes</td><td>—</td><td>ARRAY&lt;BIGINT&gt;</td></tr>
+          <tr><td>h3GetPentagonIndexes</td><td>res INT</td><td>ARRAY&lt;BIGINT&gt;</td></tr>
+          <tr><td>h3GetUnidirectionalEdge</td><td>origin BIGINT, dest BIGINT</td><td>BIGINT</td></tr>
+          <tr><td>h3UnidirectionalEdgeIsValid</td><td>edge BIGINT</td><td>BOOLEAN</td></tr>
+          <tr><td>h3GetOriginIndexFromUnidirectionalEdge</td><td>edge BIGINT</td><td>BIGINT</td></tr>
+          <tr><td>h3GetDestinationIndexFromUnidirectionalEdge</td><td>edge BIGINT</td><td>BIGINT</td></tr>
+          <tr><td>h3GetUnidirectionalEdgesFromHexagon</td><td>cell BIGINT</td><td>ARRAY&lt;BIGINT&gt;</td></tr>
+          <tr style="border-top:2px solid var(--line);"><td>geoToMGRS</td><td>lat DOUBLE, lng DOUBLE [, prec INT]</td><td>VARCHAR</td></tr>
+          <tr><td>MGRSToLat / MGRSToLng</td><td>mgrs VARCHAR</td><td>DOUBLE</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  </div><!-- /h3-flow -->
+
+  <div id="h3-ex" class="iview">
+  <div class="ex-grid">
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Convert lat/lng to H3 cell index</div><div class="ex-desc">Encode a coordinate at a given resolution</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="cmt">-- NYC at resolution 9 (~105,332 m² hex)</span>
+<span class="kw">SELECT</span> <span class="fn">geoToH3</span>(40.7128, -74.0060, 9)  AS nyc_h3,
+       <span class="fn">geoToH3</span>(37.7749, -122.4194, 9) AS sf_h3,
+       <span class="fn">h3HexAreaM2</span>(9)                  AS cell_area_m2;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Reverse: cell index → coordinates</div><div class="ex-desc">Centroid lat/lng and human-readable string</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">SELECT</span>
+  <span class="fn">h3ToGeoLat</span>(<span class="fn">geoToH3</span>(40.7128, -74.006, 9)) AS lat,
+  <span class="fn">h3ToGeoLng</span>(<span class="fn">geoToH3</span>(40.7128, -74.006, 9)) AS lng,
+  <span class="fn">h3ToString</span>(<span class="fn">geoToH3</span>(40.7128, -74.006, 9)) AS hex_str,
+  <span class="fn">h3GetResolution</span>(<span class="fn">geoToH3</span>(40.7128,-74.006,9)) AS res;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Aggregate alarms by H3 cell</div><div class="ex-desc">Grid-based density heatmap at resolution 7</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">SELECT</span>
+  <span class="fn">geoToH3</span>(site_lat, site_lng, 7)  AS h3_cell,
+  <span class="fn">COUNT</span>(*)                          AS alarm_count,
+  <span class="fn">h3ToString</span>(<span class="fn">geoToH3</span>(site_lat,site_lng,7)) AS cell_hex
+<span class="kw">FROM</span>   alarms
+<span class="kw">WHERE</span>  alarm_raised_time &gt; NOW() - <span class="kw">INTERVAL</span> 24 <span class="kw">HOUR</span>
+<span class="kw">GROUP BY</span> 1, 3
+<span class="kw">ORDER BY</span> alarm_count <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>  20;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Find neighbours within k rings</div><div class="ex-desc">All cells within k hops — coverage analysis</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="cmt">-- All cells within 2 hops of a site at res 8</span>
+<span class="kw">SELECT</span> hex_cell
+<span class="kw">FROM</span>   <span class="fn">UNNEST</span>(<span class="fn">h3kRing</span>(<span class="fn">geoToH3</span>(40.7128,-74.006,8), 2))
+       t(hex_cell);
+
+<span class="cmt">-- Are two sites adjacent?</span>
+<span class="kw">SELECT</span> <span class="fn">h3IndexesAreNeighbors</span>(
+  <span class="fn">geoToH3</span>(40.7128, -74.0060, 8),
+  <span class="fn">geoToH3</span>(40.7200, -74.0100, 8)) AS adjacent;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Distance between two cells</div><div class="ex-desc">Grid distance and precise geodesic distance</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">SELECT</span>
+  <span class="fn">h3Distance</span>(
+    <span class="fn">geoToH3</span>(40.7128,-74.006,7),
+    <span class="fn">geoToH3</span>(37.7749,-122.419,7)) AS grid_hops,
+  <span class="fn">h3PointDistKm</span>(
+    40.7128,-74.0060,
+    37.7749,-122.419)              AS km;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">MGRS coordinate conversion</div><div class="ex-desc">Convert lat/lng ↔ NATO MGRS grid reference</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="cmt">-- Encode to MGRS (1-metre precision)</span>
+<span class="kw">SELECT</span> <span class="fn">geoToMGRS</span>(40.7128, -74.0060)    AS mgrs_full,
+       <span class="fn">geoToMGRS</span>(40.7128, -74.0060, 5) AS mgrs_5m;
+
+<span class="cmt">-- Decode MGRS → lat/lng</span>
+<span class="kw">SELECT</span> <span class="fn">MGRSToLat</span>(<span class="str">'18TWL8562407470'</span>) AS lat,
+       <span class="fn">MGRSToLng</span>(<span class="str">'18TWL8562407470'</span>) AS lng;</div></div>
+    </div>
+  </div>
+  </div><!-- /h3-ex -->
+
+</div>
+
+<!-- ══════════════════════════════════════
+     PIPE PANEL
+══════════════════════════════════════ -->
+<div id="pipe" class="panel">
+  <p class="stitle">JSON PIPE Loading — End-to-End Call Flow</p>
+  <div class="cl cl-ok" style="margin-bottom:20px;">
+    <h4>What this gives you</h4>
+    Continuous, fault-tolerant loading of JSON and compressed JSON (.json.gz) files from GCS into Ontology DB
+    — fully automated, no orchestration tool needed. The PIPE polls for new files, infers schema automatically
+    (including concatenated JSON and files with raw control characters), and loads them in parallel batches.
+    <code style="color:inherit;font-size:10px;">skip_error_files=true</code> keeps the pipeline running through bad files rather than halting the entire load.
+    <code style="color:inherit;font-size:10px;">max_error_count</code> gives fine-grained control over fault tolerance.
+    Designed for high-volume streams like Apollo alarm events, ECHO NOC events, and any GCS-backed data lake.
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;">
+      <span style="font-family:var(--text);font-size:11px;font-weight:700;color:var(--muted);">Enables:</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Apollo</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">VSON</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Impact Assessment</span>
+    </div>
+  </div>
+
+  <!-- Supported formats card -->
+  <div class="card" style="margin-bottom:20px;">
+    <p class="stitle" style="margin-bottom:14px;">Supported file formats (FILES() &amp; PIPE)</p>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+
+      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px;">📄</div>
+        <div style="font-size:13px;font-weight:700;color:var(--txt);">JSON</div>
+        <div style="font-family:var(--text);font-size:10px;color:var(--txt2);margin-top:4px;line-height:1.5;">NDJSON · Concatenated · Array · .json · .json.gz</div>
+        <div style="margin-top:6px;"><span style="background:var(--brand);color:#fff;font-size:9px;font-weight:700;font-family:var(--text);padding:2px 7px;border-radius:99px;">NEW</span></div>
+      </div>
+
+      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px;">🗜️</div>
+        <div style="font-size:13px;font-weight:700;color:var(--txt);">Parquet</div>
+        <div style="font-family:var(--text);font-size:10px;color:var(--txt2);margin-top:4px;line-height:1.5;">Snappy · LZ4 · ZSTD · Gzip · Uncompressed</div>
+        <div style="margin-top:6px;"><span style="background:var(--success-bg);color:var(--success-txt);font-size:9px;font-weight:700;font-family:var(--text);padding:2px 7px;border-radius:99px;">SUPPORTED</span></div>
+      </div>
+
+      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px;">🗄️</div>
+        <div style="font-size:13px;font-weight:700;color:var(--txt);">ORC</div>
+        <div style="font-family:var(--text);font-size:10px;color:var(--txt2);margin-top:4px;line-height:1.5;">Zlib · Snappy · LZ4 · ZSTD · Uncompressed</div>
+        <div style="margin-top:6px;"><span style="background:var(--success-bg);color:var(--success-txt);font-size:9px;font-weight:700;font-family:var(--text);padding:2px 7px;border-radius:99px;">SUPPORTED</span></div>
+      </div>
+
+      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px;">📋</div>
+        <div style="font-size:13px;font-weight:700;color:var(--txt);">CSV</div>
+        <div style="font-family:var(--text);font-size:10px;color:var(--txt2);margin-top:4px;line-height:1.5;">Plain · .gz · .bz2 · LZ4 · Deflate · ZSTD</div>
+        <div style="margin-top:6px;"><span style="background:var(--success-bg);color:var(--success-txt);font-size:9px;font-weight:700;font-family:var(--text);padding:2px 7px;border-radius:99px;">SUPPORTED</span></div>
+      </div>
+
+      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:18px;margin-bottom:4px;">🔀</div>
+        <div style="font-size:13px;font-weight:700;color:var(--txt);">Avro</div>
+        <div style="font-family:var(--text);font-size:10px;color:var(--txt2);margin-top:4px;line-height:1.5;">Schema embedded · Snappy · Deflate</div>
+        <div style="margin-top:6px;"><span style="background:var(--success-bg);color:var(--success-txt);font-size:9px;font-weight:700;font-family:var(--text);padding:2px 7px;border-radius:99px;">SUPPORTED</span></div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:12px;padding:10px 14px;background:var(--info-bg);border-radius:6px;font-family:var(--text);font-size:11px;color:var(--info-txt);line-height:1.6;">
+      <strong>JSON auto-detection:</strong>
+      Starts with <code style="color:inherit;font-size:10px;">{</code> → NDJSON or concatenated <code style="color:inherit;font-size:10px;">{}{}{}</code> (Apollo/alarm format) ·
+      Starts with <code style="color:inherit;font-size:10px;">[</code> → JSON array ·
+      <code style="color:inherit;font-size:10px;">.gz</code> decompressed via chunk-based reader (not limited by compressed size) ·
+      Raw control chars (tabs, newlines) inside strings automatically sanitised before parsing.
+    </div>
+  </div>
+
+  <div class="itabs">
+    <button class="itab active" onclick="itab(this,'pipe-flow')">Call Flow</button>
+    <button class="itab" onclick="itab(this,'pipe-ex')">Examples</button>
+  </div>
+
+  <div id="pipe-flow" class="iview active">
+  <div class="g2">
+    <div class="card">
+      <div class="cl cl-info">
+        <h4>Create a JSON PIPE</h4>
+      </div>
+<div class="sql"><span class="kw">CREATE PIPE</span> load_alarms
+<span class="kw">PROPERTIES</span>(<span class="str">"skip_error_files"</span>=<span class="str">"true"</span>, <span class="str">"max_error_count"</span>=<span class="str">"10"</span>)
+<span class="kw">AS INSERT INTO</span> alarms <span class="kw">SELECT</span> *
+<span class="kw">FROM</span> <span class="fn">FILES</span>(
+  <span class="str">"path"</span>   = <span class="str">"gs://bucket/alarms/*.json.gz"</span>,
+  <span class="str">"format"</span> = <span class="str">"json"</span>,
+  <span class="str">"gcp.gcs.use_compute_engine_service_account"</span> = <span class="str">"true"</span>
+);</div>
+
+      <div class="flow">
+        <div class="frow">
+          <div class="flabel fl-fe">FE</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">1</div>
+              <div class="fbody">
+                <div class="ft">PipeScheduler → FilePipeSource.pullPiece()</div>
+                <div class="fd">batch_files=256 · batch_size=1 GiB · files marked LOADING</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">2</div>
+              <div class="fbody">
+                <div class="ft">FilePipeSource.buildInsertSql() → INSERT task submitted</div>
+                <div class="fd">INSERT INTO target SELECT * FROM FILES("path"=…, "format"="json")</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="farr">↓</div>
+        <div class="frow">
+          <div class="flabel fl-be">BE</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">3</div>
+              <div class="fbody">
+                <div class="ft">JsonScanner.get_schema() — chunk-based read</div>
+                <div class="fd">1 MiB chunks up to 8 MiB · stops at EOF (not at get_size)</div>
+                <div class="fw">⚠ fix: get_size() returns compressed bytes → old code truncated .json.gz mid-document</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">4</div>
+              <div class="fbody">
+                <div class="ft">Pre-processor: sanitise raw control chars</div>
+                <div class="fd">Bytes &lt; 0x20 inside JSON strings → replaced with space · handles \" escapes</div>
+              </div>
+            </div>
+            <div class="fstep">
+              <div class="fnum">5</div>
+              <div class="fbody">
+                <div class="ft">simdjson iterate_many() — auto-detects format</div>
+                <div class="fd">Starts {  → NDJSON or concatenated {}{}{} (Apollo/alarm format)</div>
+                <div class="fd">Starts [  → JSON array · per-row try-catch skips malformed rows</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="farr">↓</div>
+        <div class="frow">
+          <div class="flabel fl-fe">FE</div>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fnum">6</div>
+              <div class="fbody">
+                <div class="ft">finalizeTasks() — error routing</div>
+                <div class="fd"><b>skip_error_files=false</b>: tooManyErrors → failedTaskCount++ → PIPE ERROR after max_error_count tasks</div>
+                <div class="fd"><b>skip_error_files=true</b>: tooManyErrors → skipPieceFiles() → files SKIPPED · pipe continues</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- State machine -->
+      <div class="card">
+        <p class="stitle" style="margin-bottom:12px;">File state machine</p>
+        <svg viewBox="0 0 340 230" style="width:100%;display:block;">
+          <defs>
+            <marker id="mb" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#0047b3"/></marker>
+            <marker id="mg" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#006625"/></marker>
+            <marker id="mo" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#7a4f00"/></marker>
+            <marker id="mr" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#c40015"/></marker>
+          </defs>
+          <!-- State boxes -->
+          <rect x="120" y="10"  width="100" height="30" rx="5" fill="#eeece8" stroke="#d8d5cf"/>
+          <text x="170" y="30" text-anchor="middle" font-size="12" fill="#716f6d" font-family="Helvetica Neue,sans-serif">UNLOADED</text>
+          <rect x="120" y="75"  width="100" height="30" rx="5" fill="#dceeff" stroke="#aad1f7"/>
+          <text x="170" y="95" text-anchor="middle" font-size="12" fill="#0047b3" font-family="Helvetica Neue,sans-serif">LOADING</text>
+          <rect x="5"   y="165" width="90"  height="30" rx="5" fill="#e0f4e8" stroke="#b3dfc3"/>
+          <text x="50"  y="185" text-anchor="middle" font-size="12" fill="#006625" font-family="Helvetica Neue,sans-serif">FINISHED</text>
+          <rect x="120" y="165" width="100" height="30" rx="5" fill="#fff2cc" stroke="#f0dda0"/>
+          <text x="170" y="185" text-anchor="middle" font-size="12" fill="#7a4f00" font-family="Helvetica Neue,sans-serif">SKIPPED</text>
+          <rect x="245" y="165" width="90"  height="30" rx="5" fill="#fde8eb" stroke="#f4bfc4"/>
+          <text x="290" y="185" text-anchor="middle" font-size="12" fill="#c40015" font-family="Helvetica Neue,sans-serif">ERROR</text>
+          <!-- Arrows -->
+          <line x1="170" y1="40"  x2="170" y2="73"  stroke="#0047b3" stroke-width="1.5" marker-end="url(#mb)"/>
+          <text x="177" y="61" font-size="9" fill="#0047b3">batch starts</text>
+          <line x1="140" y1="105" x2="52"  y2="163" stroke="#006625" stroke-width="1.5" marker-end="url(#mg)"/>
+          <text x="56"  y="140" font-size="9" fill="#006625">success</text>
+          <line x1="170" y1="105" x2="170" y2="163" stroke="#7a4f00" stroke-width="1.5" stroke-dasharray="5,2" marker-end="url(#mo)"/>
+          <text x="177" y="138" font-size="8" fill="#7a4f00">skip_error</text>
+          <line x1="200" y1="105" x2="279" y2="163" stroke="#c40015" stroke-width="1.5" marker-end="url(#mr)"/>
+          <text x="240" y="132" font-size="9" fill="#c40015">failure</text>
+          <path d="M325,165 Q348,120 325,105" stroke="#c40015" stroke-width="1.5" fill="none" stroke-dasharray="4,2" marker-end="url(#mr)"/>
+          <text x="330" y="133" font-size="8" fill="#c40015">retry</text>
+          <text x="328" y="99"  font-size="7" fill="#c40015">≤ max_error_count</text>
+        </svg>
+      </div>
+
+      <!-- Apollo alarm callout -->
+      <div class="card mt2">
+        <p class="stitle" style="margin-bottom:10px;">Apollo alarm format quirk</p>
+        <div class="cl cl-warn" style="margin-bottom:0">
+          <h4>Concatenated JSON inside .json.gz</h4>
+          Files contain <code style="color:inherit;font-size:10px;">{obj1}{obj2}{obj3}</code> — no newlines between objects, gzip-compressed.<br><br>
+          <b>Fix 1:</b> Chunk-based read (not get_size). Compressed ≈ 5 MB, decompressed ≈ 50 MB — old code only read 10% of file.<br>
+          <b>Fix 2:</b> <code style="color:inherit;font-size:10px;">iterate_many()</code> handles adjacent objects natively — no separator needed.
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /pipe-flow -->
+
+  <div id="pipe-ex" class="iview">
+  <div class="ex-grid">
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Basic JSON PIPE</div><div class="ex-desc">Auto schema inference, continuous GCS polling</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">CREATE TABLE</span> events (
+  event_id   <span class="kw">VARCHAR</span>(64), event_type <span class="kw">VARCHAR</span>(32),
+  user_id    <span class="kw">BIGINT</span>,     ts         <span class="kw">DATETIME</span>
+) <span class="kw">DUPLICATE KEY</span>(event_id)
+<span class="kw">DISTRIBUTED BY HASH</span>(event_id) <span class="kw">BUCKETS</span> 4;
+
+<span class="kw">CREATE PIPE</span> load_events
+<span class="kw">AS INSERT INTO</span> events <span class="kw">SELECT</span> *
+<span class="kw">FROM</span> <span class="fn">FILES</span>(<span class="str">"path"</span>=<span class="str">"gs://bucket/events/*.json"</span>,
+           <span class="str">"format"</span>=<span class="str">"json"</span>,
+           <span class="str">"gcp.gcs.use_compute_engine_service_account"</span>=<span class="str">"true"</span>);</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Fault-tolerant PIPE (.json.gz)</div><div class="ex-desc">Skip bad files, cap retries, smaller batches</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">CREATE PIPE</span> load_alarms
+<span class="kw">PROPERTIES</span>(
+  <span class="str">"skip_error_files"</span> = <span class="str">"true"</span>,
+  <span class="str">"max_error_count"</span>  = <span class="str">"20"</span>,
+  <span class="str">"batch_files"</span>      = <span class="str">"50"</span>
+) <span class="kw">AS INSERT INTO</span> alarms <span class="kw">SELECT</span> *
+<span class="kw">FROM</span> <span class="fn">FILES</span>(
+  <span class="str">"path"</span>=<span class="str">"gs://bucket/alarms/*.json.gz"</span>,
+  <span class="str">"format"</span>=<span class="str">"json"</span>,
+  <span class="str">"gcp.gcs.use_compute_engine_service_account"</span>=<span class="str">"true"</span>);</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Monitor PIPE status</div><div class="ex-desc">Check state, loaded files, and any errors</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="cmt">-- Overall PIPE state</span>
+<span class="kw">SHOW PIPES</span>;
+
+<span class="cmt">-- File-level detail (FINISHED / SKIPPED / ERROR)</span>
+<span class="kw">SELECT</span> file_name, load_state, first_error_msg
+<span class="kw">FROM</span>   information_schema.pipe_files
+<span class="kw">WHERE</span>  pipe_name = <span class="str">'load_alarms'</span>
+<span class="kw">ORDER BY</span> load_state, file_name;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">JSON with nested root extraction</div><div class="ex-desc">Navigate into sub-object before reading columns</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="cmt">-- File: {"meta":{...},"data":{"id":1,"val":"x"}}</span>
+<span class="kw">SELECT</span> *
+<span class="kw">FROM</span> <span class="fn">FILES</span>(
+  <span class="str">"path"</span>      = <span class="str">"gs://bucket/wrapped/*.json"</span>,
+  <span class="str">"format"</span>    = <span class="str">"json"</span>,
+  <span class="str">"json_root"</span> = <span class="str">"$.data"</span>,
+  <span class="str">"gcp.gcs.use_compute_engine_service_account"</span>=<span class="str">"true"</span>
+) <span class="kw">LIMIT</span> 5;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Suspend / resume PIPE</div><div class="ex-desc">Pause during maintenance, resume without losing position</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">ALTER PIPE</span> load_alarms <span class="kw">SUSPEND</span>;
+<span class="kw">ALTER PIPE</span> load_alarms <span class="kw">RESUME</span>;
+
+<span class="cmt">-- Change properties on the fly</span>
+<span class="kw">ALTER PIPE</span> load_alarms
+  <span class="kw">SET PROPERTIES</span>(<span class="str">"max_error_count"</span>=<span class="str">"50"</span>);</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Retry skipped / errored files</div><div class="ex-desc">Re-queue files after upstream fix</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="cmt">-- Retry a specific failed file</span>
+<span class="kw">ALTER PIPE</span> load_alarms <span class="kw">RETRY FILE</span>
+  <span class="str">"gs://bucket/alarms/bad_file.json.gz"</span>;
+
+<span class="cmt">-- Retry ALL errored files in this pipe</span>
+<span class="kw">ALTER PIPE</span> load_alarms <span class="kw">RETRY ALL</span>;</div></div>
+    </div>
+  </div>
+  </div><!-- /pipe-ex -->
+
+</div>
+
+<!-- ══════════════════════════════════════
+     REFERENCE PANEL
+══════════════════════════════════════ -->
+<div id="ref" class="panel">
+  <p class="stitle">Configuration Reference</p>
+  <div class="g2">
+    <div>
+      <div class="card">
+        <p class="stitle" style="margin-bottom:12px;">BigQuery catalog properties</p>
+        <table class="tbl">
+          <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>type</td><td>—</td><td>Must be "bigquery"</td></tr>
+            <tr><td>bigquery.project.id</td><td>—</td><td>GCP project ID (required)</td></tr>
+            <tr><td>bigquery.auth.type</td><td>application_default</td><td>application_default · service_account_json · service_account_file</td></tr>
+            <tr><td>bigquery.credentials.json</td><td>—</td><td>Inline service-account key JSON</td></tr>
+            <tr><td>bigquery.api.endpoint</td><td>public</td><td>BQ REST override for VPC-SC (e.g. https://bigquery-vzit.p.googleapis.com)</td></tr>
+            <tr><td>bigquery.storage.endpoint</td><td>public</td><td>BQ Storage gRPC override (e.g. bigquerystorage-vzit.p.googleapis.com:443)</td></tr>
+            <tr><td>bigquery.view.enabled</td><td>false</td><td>Materialise BQ views before scanning</td></tr>
+            <tr><td>bigquery.max.streams</td><td>0</td><td>Preferred min stream count (0 = GCP decides)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card mt2">
+        <p class="stitle" style="margin-bottom:12px;">PIPE properties</p>
+        <table class="tbl">
+          <thead><tr><th>Property</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>auto_ingest</td><td>true</td><td>Continuously poll for new files</td></tr>
+            <tr><td>poll_interval</td><td>10 s</td><td>Seconds between GCS polls</td></tr>
+            <tr><td>batch_size</td><td>1 GiB</td><td>Max bytes per load task</td></tr>
+            <tr><td>batch_files</td><td>256</td><td>Max files per load task</td></tr>
+            <tr><td>skip_error_files</td><td>false</td><td>Mark failed files SKIPPED, pipe keeps running</td></tr>
+            <tr><td>max_error_count</td><td>5</td><td>Max failed tasks before PIPE → ERROR; also per-task retry limit</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <p class="stitle" style="margin-bottom:12px;">FILES() JSON options</p>
+        <table class="tbl">
+          <thead><tr><th>Property</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>format = "json"</td><td>Enable JSON scanning &amp; auto schema inference</td></tr>
+            <tr><td>json_root</td><td>Navigate to sub-object before reading (e.g. "$.data")</td></tr>
+            <tr><td>jsonpaths</td><td>Explicit field extraction paths (only set when non-empty)</td></tr>
+            <tr><td>strip_outer_array</td><td>"true" to treat outer array elements as rows</td></tr>
+            <tr><td>gcp.gcs.use_compute_engine_service_account</td><td>"true" for GKE Workload Identity GCS access</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card mt2">
+        <p class="stitle" style="margin-bottom:8px;">Apollo alarm PIPE — full example</p>
+<div class="sql"><span class="kw">CREATE TABLE</span> alarms (
+  alarm_raised_time <span class="kw">DATETIME</span>,
+  component_id      <span class="kw">VARCHAR</span>(256),
+  source_system_id  <span class="kw">VARCHAR</span>(64),
+  sequence_id       <span class="kw">BIGINT</span>,
+  raw_message       <span class="kw">VARCHAR</span>(65535)
+) <span class="kw">DUPLICATE KEY</span>(alarm_raised_time)
+<span class="kw">DISTRIBUTED BY HASH</span>(component_id) <span class="kw">BUCKETS</span> 8;
+
+<span class="kw">CREATE PIPE</span> load_apollo_alarms
+<span class="kw">PROPERTIES</span>(<span class="str">"skip_error_files"</span>=<span class="str">"true"</span>, <span class="str">"max_error_count"</span>=<span class="str">"20"</span>, <span class="str">"batch_files"</span>=<span class="str">"50"</span>)
+<span class="kw">AS INSERT INTO</span> alarms
+<span class="kw">SELECT</span> alarmRaisedTime, componentID, sourceSystemId, sequenceID, rawMessage
+<span class="kw">FROM</span> <span class="fn">FILES</span>(
+  <span class="str">"path"</span>   = <span class="str">"gs://h6zv-prod-npipr-0-usmr-common/vz.common.apollo.alarm.alarm.orig.v0/date=*/*.json.gz"</span>,
+  <span class="str">"format"</span> = <span class="str">"json"</span>,
+  <span class="str">"gcp.gcs.use_compute_engine_service_account"</span> = <span class="str">"true"</span>
+);</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     ONTOLOGY BUILDER PANEL
+══════════════════════════════════════ -->
+<div id="ontology" class="panel">
+  <p class="stitle">Ontology Builder — Platform Overview</p>
+
+  <!-- ── DATA FLOW DIAGRAM ── -->
+  <div class="card" style="margin-bottom:20px;padding:18px 16px 14px;background:var(--hdr);border-color:var(--hdr-border);">
+    <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;">Unified Data Platform</div>
+    <div style="font-family:var(--text);font-size:12px;color:#aaa8a3;margin-bottom:16px;">Centralise all your data sources in Ontology DB — then serve insights to AI agents, MCP tools, APIs, and dashboards from a single SQL interface.</div>
+    <svg viewBox="0 0 680 210" style="width:100%;display:block;" font-family="'Helvetica Neue',Arial,sans-serif">
+      <defs>
+        <marker id="df-arr" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#aaa8a3"/></marker>
+        <marker id="df-arw" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ffffff"/></marker>
+      </defs>
+
+      <!-- ── INBOUND SOURCES (left column) ── -->
+      <text x="84" y="12" text-anchor="middle" font-size="8" font-weight="700" fill="#aaa8a3" letter-spacing="1.5">INBOUND</text>
+      <!-- BQ/GCP -->
+      <rect x="4" y="18" width="160" height="32" rx="5" fill="#1c3a5e" stroke="#2a5298"/>
+      <text x="84" y="31" text-anchor="middle" font-size="10" font-weight="700" fill="#90cdf4">BigQuery / GCP</text>
+      <text x="84" y="44" text-anchor="middle" font-size="9" fill="#90cdf4">External Catalog · SQL pushdown</text>
+      <!-- Object Storage -->
+      <rect x="4" y="58" width="160" height="32" rx="5" fill="#1c3a5e" stroke="#2a5298"/>
+      <text x="84" y="71" text-anchor="middle" font-size="10" font-weight="700" fill="#90cdf4">Object Storage</text>
+      <text x="84" y="84" text-anchor="middle" font-size="9" fill="#90cdf4">GCS · S3 · PIPE / Routine Load</text>
+      <!-- Embeddings -->
+      <rect x="4" y="98" width="160" height="32" rx="5" fill="#2d1f5e" stroke="#6b46c1"/>
+      <text x="84" y="111" text-anchor="middle" font-size="10" font-weight="700" fill="#c4b5fd">Embeddings / Vectors</text>
+      <text x="84" y="124" text-anchor="middle" font-size="9" fill="#c4b5fd">AI features · similarity search</text>
+      <!-- Transactional -->
+      <rect x="4" y="138" width="160" height="32" rx="5" fill="#1a3a2e" stroke="#276749"/>
+      <text x="84" y="151" text-anchor="middle" font-size="10" font-weight="700" fill="#9ae6b4">Transactional Data</text>
+      <text x="84" y="164" text-anchor="middle" font-size="9" fill="#9ae6b4">Kafka · Broker Load · Spanner</text>
+      <!-- Kafka / Streaming -->
+      <rect x="4" y="178" width="160" height="32" rx="5" fill="#3a1f1c" stroke="#9b2335"/>
+      <text x="84" y="191" text-anchor="middle" font-size="10" font-weight="700" fill="#feb2b2">Real-time Streams</text>
+      <text x="84" y="204" text-anchor="middle" font-size="9" fill="#feb2b2">Kafka · JSON PIPE · Routine Load</text>
+
+      <!-- ── ARROWS INBOUND → CORE ── -->
+      <line x1="164" y1="34"  x2="238" y2="90"  stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+      <line x1="164" y1="74"  x2="238" y2="96"  stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+      <line x1="164" y1="114" x2="238" y2="104" stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+      <line x1="164" y1="154" x2="238" y2="112" stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+      <line x1="164" y1="194" x2="238" y2="120" stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+
+      <!-- ── CORE: ONTOLOGY DB ── -->
+      <rect x="240" y="60" width="200" height="92" rx="10" fill="#e10014" stroke="#b0000f" stroke-width="2"/>
+      <text x="340" y="94" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">Ontology DB</text>
+      <text x="340" y="112" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.85)">Pipeline Manager · SQL IDE</text>
+      <text x="340" y="126" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.85)">Python UDFs · Cross-workspace</text>
+      <text x="340" y="140" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.85)">Workspaces · Lineage · Monitor</text>
+
+      <!-- ── ARROWS CORE → OUTBOUND ── -->
+      <line x1="440" y1="90"  x2="514" y2="34"  stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+      <line x1="440" y1="96"  x2="514" y2="74"  stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+      <line x1="440" y1="104" x2="514" y2="114" stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+      <line x1="440" y1="112" x2="514" y2="154" stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+      <line x1="440" y1="120" x2="514" y2="194" stroke="#555" stroke-width="1.5" marker-end="url(#df-arr)"/>
+
+      <!-- ── OUTBOUND CONSUMERS (right column) ── -->
+      <text x="596" y="12" text-anchor="middle" font-size="8" font-weight="700" fill="#aaa8a3" letter-spacing="1.5">OUTBOUND</text>
+      <!-- MCP Servers -->
+      <rect x="516" y="18" width="160" height="32" rx="5" fill="#2d1f5e" stroke="#6b46c1"/>
+      <text x="596" y="31" text-anchor="middle" font-size="10" font-weight="700" fill="#c4b5fd">MCP Servers</text>
+      <text x="596" y="44" text-anchor="middle" font-size="9" fill="#c4b5fd">Tool calls · Claude Code / IDE</text>
+      <!-- AI Agents -->
+      <rect x="516" y="58" width="160" height="32" rx="5" fill="#2d1f5e" stroke="#6b46c1"/>
+      <text x="596" y="71" text-anchor="middle" font-size="10" font-weight="700" fill="#c4b5fd">AI Agents</text>
+      <text x="596" y="84" text-anchor="middle" font-size="9" fill="#c4b5fd">LLM reasoning · Gemini · Claude</text>
+      <!-- REST APIs -->
+      <rect x="516" y="98" width="160" height="32" rx="5" fill="#1c3a5e" stroke="#2a5298"/>
+      <text x="596" y="111" text-anchor="middle" font-size="10" font-weight="700" fill="#90cdf4">REST APIs</text>
+      <text x="596" y="124" text-anchor="middle" font-size="9" fill="#90cdf4">Bearer token · Bearer auth</text>
+      <!-- BI / Dashboards -->
+      <rect x="516" y="138" width="160" height="32" rx="5" fill="#1a3a2e" stroke="#276749"/>
+      <text x="596" y="151" text-anchor="middle" font-size="10" font-weight="700" fill="#9ae6b4">BI &amp; Dashboards</text>
+      <text x="596" y="164" text-anchor="middle" font-size="9" fill="#9ae6b4">Tableau · Superset · Grafana</text>
+      <!-- Catalyst Dashboards -->
+      <rect x="516" y="178" width="160" height="32" rx="5" fill="#3a1f1c" stroke="#9b2335"/>
+      <text x="596" y="191" text-anchor="middle" font-size="10" font-weight="700" fill="#feb2b2">Catalyst Dashboards</text>
+      <text x="596" y="204" text-anchor="middle" font-size="9" fill="#feb2b2">Plotly · Streamlit · Dash</text>
+    </svg>
+  </div>
+
+  <!-- ── BENEFITS FOR BUSINESS USERS ── -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px;">
+    <div class="card" style="border-top:3px solid var(--brand);padding:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:6px;">No Data Movement</div>
+      <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Query BigQuery, GCS, Kafka, and Spanner directly from a single SQL prompt. Ontology DB pushes filters down to the source — you pay for one query, not a copy.</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--info-txt);padding:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--info-txt);margin-bottom:6px;">AI-Ready by Default</div>
+      <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Every workspace ships with an MCP server tool, a Gemini-powered SQL assistant, and AI-generated pipeline SQL. Your analysts describe what they need; Ontology DB writes the query.</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--success-txt);padding:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--success-txt);margin-bottom:6px;">Governed Access, Zero Ops</div>
+      <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Admins approve workspaces; Ontology DB automatically creates isolated databases and service accounts. Cross-team read grants are one approval away — no DBA ticket required.</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--warn-txt);padding:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--warn-txt);margin-bottom:6px;">Visual Pipeline Builder</div>
+      <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Drag sources and transformers onto a canvas. Ontology DB generates and deploys the SQL — tables, materialized views, views, pipes — in dependency order, idempotently.</div>
+    </div>
+    <div class="card" style="border-top:3px solid #6b46c1;padding:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6b46c1;margin-bottom:6px;">Sub-millisecond Repeats</div>
+      <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Materialized views cache expensive aggregations locally. BigQuery queries that took 120 s return in &lt;50 ms on repeat — zero extra BQ cost, transparent to BI tools.</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--muted);padding:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--txt2);margin-bottom:6px;">Full Lineage &amp; Monitoring</div>
+      <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Every table reference is tracked upstream and downstream. Pipeline degradation fires email alerts with 5-minute dedup. Teams subscribe per workspace — no alert fatigue.</div>
+    </div>
+  </div>
+
+  <div class="itabs">
+    <button class="itab active" onclick="itab(this,'ont-arch')">Architecture</button>
+    <button class="itab" onclick="itab(this,'ont-lifecycle')">Workspace Lifecycle</button>
+    <button class="itab" onclick="itab(this,'ont-pipeline')">Pipeline Manager</button>
+    <button class="itab" onclick="itab(this,'ont-api')">API Reference</button>
+  </div>
+
+  <!-- ── ARCHITECTURE TAB ─────────────────────────────────────── -->
+  <div id="ont-arch" class="iview active">
+
+    <div class="card" style="margin-bottom:20px;padding:16px;">
+      <p class="stitle" style="margin-bottom:14px;">System Architecture</p>
+      <svg viewBox="0 0 680 334" style="width:100%;display:block;" font-family="'Helvetica Neue',Arial,sans-serif">
+        <defs>
+          <marker id="sa-arr" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#716f6d"/></marker>
+          <marker id="sa-arb" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#0047b3"/></marker>
+          <marker id="sa-arg" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#006625"/></marker>
+          <marker id="sa-aro" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#7a4f00"/></marker>
+        </defs>
+
+        <!-- TIER 1: CLIENTS -->
+        <rect x="0" y="0" width="680" height="64" rx="6" fill="#eeece8" stroke="#d8d5cf" stroke-width="1"/>
+        <text x="8" y="11" font-size="8" font-weight="700" fill="#aaa8a3" letter-spacing="1.5">CLIENT</text>
+        <rect x="8"   y="14" width="130" height="38" rx="4" fill="#fde8eb" stroke="#f4bfc4"/>
+        <text x="73"  y="30" text-anchor="middle" font-size="11" font-weight="600" fill="#c40015">Analyst</text>
+        <text x="73"  y="44" text-anchor="middle" font-size="10" fill="#c40015">Browser · SQL IDE</text>
+        <rect x="158" y="14" width="114" height="38" rx="4" fill="#fde8eb" stroke="#f4bfc4"/>
+        <text x="215" y="30" text-anchor="middle" font-size="11" font-weight="600" fill="#c40015">Admin</text>
+        <text x="215" y="44" text-anchor="middle" font-size="10" fill="#c40015">Admin Panel</text>
+        <rect x="292" y="14" width="158" height="38" rx="4" fill="#fde8eb" stroke="#f4bfc4"/>
+        <text x="371" y="30" text-anchor="middle" font-size="11" font-weight="600" fill="#c40015">MCP / API Client</text>
+        <text x="371" y="44" text-anchor="middle" font-size="10" fill="#c40015">Bearer token · role=ontology</text>
+        <rect x="472" y="14" width="200" height="38" rx="4" fill="#eeece8" stroke="#d8d5cf" stroke-dasharray="4,2"/>
+        <text x="572" y="30" text-anchor="middle" font-size="11" font-weight="600" fill="#716f6d">LDAP</text>
+        <text x="572" y="44" text-anchor="middle" font-size="10" fill="#716f6d">role assignment at login</text>
+
+        <!-- Connectors 1→2 -->
+        <line x1="73"  y1="52" x2="73"  y2="91" stroke="#716f6d" stroke-width="1.5" marker-end="url(#sa-arr)"/>
+        <line x1="215" y1="52" x2="215" y2="91" stroke="#716f6d" stroke-width="1.5" marker-end="url(#sa-arr)"/>
+        <line x1="371" y1="52" x2="371" y2="91" stroke="#716f6d" stroke-width="1.5" marker-end="url(#sa-arr)"/>
+        <line x1="572" y1="52" x2="572" y2="91" stroke="#716f6d" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#sa-arr)"/>
+
+        <!-- TIER 2: CATALYST PLATFORM -->
+        <rect x="0" y="93" width="680" height="82" rx="6" fill="#dceeff" stroke="#aad1f7" stroke-width="1"/>
+        <text x="8" y="104" font-size="8" font-weight="700" fill="#0047b3" letter-spacing="1.5">CATALYST PLATFORM</text>
+        <rect x="8"   y="110" width="78"  height="56" rx="4" fill="#fff" stroke="#aad1f7"/>
+        <text x="47"  y="130" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">nginx</text>
+        <text x="47"  y="144" text-anchor="middle" font-size="10" fill="#0047b3">:443 TLS</text>
+        <text x="47"  y="157" text-anchor="middle" font-size="9"  fill="#716f6d">auth_request</text>
+        <line x1="86"  y1="138" x2="108" y2="138" stroke="#0047b3" stroke-width="1.5" marker-end="url(#sa-arb)"/>
+        <rect x="110" y="110" width="158" height="56" rx="4" fill="#fff" stroke="#aad1f7"/>
+        <text x="189" y="128" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">blueprints/auth.py</text>
+        <text x="189" y="142" text-anchor="middle" font-size="10" fill="#0047b3">/_catalyst_auth ACL</text>
+        <text x="189" y="156" text-anchor="middle" font-size="9"  fill="#716f6d">role resolution · CSRF</text>
+        <line x1="268" y1="138" x2="290" y2="138" stroke="#0047b3" stroke-width="1.5" marker-end="url(#sa-arb)"/>
+        <rect x="292" y="110" width="192" height="56" rx="4" fill="#fff" stroke="#aad1f7"/>
+        <text x="388" y="126" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">blueprints/ontology.py</text>
+        <text x="388" y="140" text-anchor="middle" font-size="10" fill="#0047b3">blueprints/admin.py</text>
+        <text x="388" y="154" text-anchor="middle" font-size="9"  fill="#716f6d">workspace · pipeline · UDF routes</text>
+        <line x1="484" y1="138" x2="506" y2="138" stroke="#0047b3" stroke-width="1.5" marker-end="url(#sa-arb)"/>
+        <rect x="508" y="110" width="164" height="56" rx="4" fill="#fff" stroke="#aad1f7"/>
+        <text x="590" y="128" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">services/</text>
+        <text x="590" y="142" text-anchor="middle" font-size="10" fill="#0047b3">starrocks.py</text>
+        <text x="590" y="156" text-anchor="middle" font-size="9"  fill="#716f6d">ontology_deploy.py</text>
+
+        <!-- Connectors 2→3 -->
+        <line x1="340" y1="166" x2="130" y2="202" stroke="#7a4f00" stroke-width="1.5" marker-end="url(#sa-aro)"/>
+        <line x1="590" y1="166" x2="590" y2="202" stroke="#006625" stroke-width="1.5" marker-end="url(#sa-arg)"/>
+
+        <!-- TIER 3: DATA LAYER -->
+        <rect x="0" y="204" width="680" height="54" rx="6" fill="#fffbf0" stroke="#e0dbd0" stroke-width="1"/>
+        <text x="8" y="216" font-size="8" font-weight="700" fill="#7a4f00" letter-spacing="1.5">DATA LAYER</text>
+        <rect x="8"   y="220" width="248" height="30" rx="4" fill="#fff2cc" stroke="#f0dda0"/>
+        <text x="132" y="233" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">Postgres — catalyst_db.py</text>
+        <text x="132" y="246" text-anchor="middle" font-size="10" fill="#7a4f00">ontology_* tables · WAL mode</text>
+        <rect x="432" y="220" width="240" height="30" rx="4" fill="#e0f4e8" stroke="#b3dfc3"/>
+        <text x="552" y="233" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">MySQL wire protocol</text>
+        <text x="552" y="246" text-anchor="middle" font-size="10" fill="#006625">mysql-connector-python · :443</text>
+
+        <!-- Connector 3→4 -->
+        <line x1="552" y1="250" x2="552" y2="278" stroke="#006625" stroke-width="1.5" marker-end="url(#sa-arg)"/>
+
+        <!-- TIER 4: ONTOLOGY DB CLUSTERS -->
+        <rect x="0" y="280" width="680" height="52" rx="6" fill="#e0f4e8" stroke="#b3dfc3" stroke-width="1"/>
+        <text x="8" y="292" font-size="8" font-weight="700" fill="#006625" letter-spacing="1.5">ONTOLOGY DB CLUSTER(S)</text>
+        <rect x="8"   y="297" width="192" height="28" rx="4" fill="#fff" stroke="#b3dfc3"/>
+        <text x="104" y="309" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">Cluster 1  FE / BE</text>
+        <text x="104" y="321" text-anchor="middle" font-size="9"  fill="#006625">ws_alpha · ws_beta · sa_&lt;slug&gt;</text>
+        <rect x="212" y="297" width="192" height="28" rx="4" fill="#fff" stroke="#b3dfc3"/>
+        <text x="308" y="309" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">Cluster 2  FE / BE</text>
+        <text x="308" y="321" text-anchor="middle" font-size="9"  fill="#006625">ws_gamma · sa_&lt;slug&gt;</text>
+        <rect x="420" y="297" width="252" height="28" rx="4" fill="#e0f4e8" stroke="#b3dfc3" stroke-dasharray="4,2"/>
+        <text x="546" y="309" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">catalyst_&lt;slug&gt; superuser</text>
+        <text x="546" y="321" text-anchor="middle" font-size="9"  fill="#006625">pre-boot only · all runtime ops use sa_&lt;slug&gt;</text>
+      </svg>
+    </div>
+
+    <div class="g3">
+
+      <!-- Role & Access -->
+      <div class="card">
+        <p class="stitle" style="margin-bottom:10px;">Role &amp; Access</p>
+        <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;margin-bottom:10px;">
+          The <code style="font-family:var(--mono);font-size:11px;color:var(--txt);">ontology</code> role has
+          <strong>identical permissions to <code style="font-family:var(--mono);font-size:11px;">creator</code></strong>
+          — deploy dashboards, full API access, sharing groups and teams.
+        </div>
+        <table class="tbl">
+          <thead><tr><th>Source</th><th>Mechanism</th></tr></thead>
+          <tbody>
+            <tr><td>LDAP group</td><td>CATALYST_LDAP_ONTOLOGY_GROUP env var</td></tr>
+            <tr><td>DB member</td><td>ontology_members table — admin-managed</td></tr>
+            <tr><td>DB team</td><td>ontology_teams — all team members inherit</td></tr>
+          </tbody>
+        </table>
+        <div class="cl cl-info mt2" style="margin-bottom:0;font-size:11px;">
+          <h4>Resolution order at login</h4>
+          1. LDAP determines role from group membership<br>
+          2. If not admin/ontology, call is_user_ontology_member() — override if true<br>
+          3. Final role stored in session["role"]
+        </div>
+      </div>
+
+      <!-- Cluster pre-boot -->
+      <div class="card">
+        <p class="stitle" style="margin-bottom:10px;">Ontology DB Cluster Pre-Boot</p>
+        <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;margin-bottom:10px;">
+          Admins register clusters. Catalyst auto-provisions a superuser
+          (<code style="font-family:var(--mono);font-size:11px;">catalyst_&lt;slug&gt;</code>) synchronously on save.
+          Admin credentials used only during pre-boot; all subsequent operations use the generated superuser.
+        </div>
+        <div class="flow">
+          <div class="frow">
+            <div class="flabel fl-user">Admin</div>
+            <div class="fsteps">
+              <div class="fstep">
+                <div class="fnum">1</div>
+                <div class="fbody">
+                  <div class="ft">POST /admin/api/ontology/clusters</div>
+                  <div class="fd">name, host, port, admin_username, admin_password</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-be">SR</div>
+            <div class="fsteps">
+              <div class="fstep">
+                <div class="fnum">2</div>
+                <div class="fbody">
+                  <div class="ft">test_connection() → create_superuser()</div>
+                  <div class="fd">CREATE USER catalyst_&lt;slug&gt; · GRANT user_admin + CREATE DATABASE</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-fe">DB</div>
+            <div class="fsteps">
+              <div class="fstep">
+                <div class="fnum">3</div>
+                <div class="fbody">
+                  <div class="ft">status = ready</div>
+                  <div class="fd">superuser_password_enc stored (Fernet-encrypted)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature cards -->
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="card" style="border-left:3px solid var(--info-txt);">
+          <div style="font-size:13px;font-weight:700;color:var(--info-txt);margin-bottom:4px;">SQL IDE</div>
+          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">CodeMirror editor auto-connected via workspace SA credentials. AI assist (Gemini) with Ontology DB dialect hints, current_query context, and full schema injection.</div>
+        </div>
+        <div class="card" style="border-left:3px solid var(--success-txt);">
+          <div style="font-size:13px;font-weight:700;color:var(--success-txt);margin-bottom:4px;">Pipeline Manager</div>
+          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">DAG canvas. Engines: <strong>Ontology DB</strong> · <strong>BigQuery</strong> · <strong>Spanner</strong>. Node types: Sources (GCS, Kafka, Broker Load, BQ GCS Load, Spanner GCS Import) and Transformers (Table, MV, View).</div>
+        </div>
+        <div class="card" style="border-left:3px solid var(--brand);">
+          <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:4px;">Python UDFs</div>
+          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Scalar and vectorised inline UDFs deployed to Ontology DB via SA. AI-generated body via Gemini. Collapsible panel inside Pipeline Manager.</div>
+        </div>
+        <div class="card" style="border-left:3px solid var(--warn-txt);">
+          <div style="font-size:13px;font-weight:700;color:var(--warn-txt);margin-bottom:4px;">Monitor &amp; Alerts</div>
+          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Live PIPE, MV, Routine Load status (30 s auto-refresh). Email alerts on degradation with 5-minute dedup. Per-workspace subscriber management.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl cl-ok mt3" style="margin-bottom:0;">
+      <h4>Cross-Workspace Access (migration 110)</h4>
+      Any workspace owner can request read-only access to another workspace. On approval Catalyst executes
+      <code style="font-family:var(--mono);font-size:11px;color:inherit;">GRANT SELECT ON ALL TABLES/VIEWS/MVs IN DATABASE &lt;target&gt; TO USER 'sa_&lt;requester_slug&gt;'@'%'</code>
+      on every cluster where both workspaces are ready. The SQL IDE sidebar and pipeline node editor both render
+      granted external workspaces under a collapsible "External Workspaces" section.
+      The pipeline lineage detector tags cross-workspace refs as <code style="font-family:var(--mono);font-size:11px;color:inherit;">cross_workspace_granted: true</code>.
+    </div>
+  </div><!-- /ont-arch -->
+
+  <!-- ── WORKSPACE LIFECYCLE TAB ──────────────────────────────── -->
+  <div id="ont-lifecycle" class="iview">
+    <div class="g2">
+      <div class="card">
+        <div class="cl cl-info">
+          <h4>Workspace request → provisioning flow</h4>
+          User submits request · admin reviews · Catalyst creates DB + service accounts in Ontology DB
+        </div>
+        <div class="flow">
+          <div class="frow">
+            <div class="flabel fl-user">User</div>
+            <div class="fsteps">
+              <div class="fstep">
+                <div class="fnum">1</div>
+                <div class="fbody">
+                  <div class="ft">POST /ontology/api/workspace-request</div>
+                  <div class="fd">name, description, justification, cluster_ids[]</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-fe">DB</div>
+            <div class="fsteps">
+              <div class="fstep">
+                <div class="fnum">2</div>
+                <div class="fbody">
+                  <div class="ft">INSERT ontology_workspace_requests (status=pending)</div>
+                  <div class="fd">slug = normalize_dashboard_name(name)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-user">Admin</div>
+            <div class="fsteps">
+              <div class="fstep">
+                <div class="fnum">3</div>
+                <div class="fbody">
+                  <div class="ft">POST /admin/api/ontology/workspace-requests/&lt;id&gt;/approve</div>
+                  <div class="fd">Runs for each cluster_id in request.cluster_ids:</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-be">SR</div>
+            <div class="fsteps">
+              <div class="fstep">
+                <div class="fnum">4</div>
+                <div class="fbody">
+                  <div class="ft">create_database(slug)</div>
+                  <div class="fd">CREATE DATABASE IF NOT EXISTS `&lt;slug&gt;`</div>
+                </div>
+              </div>
+              <div class="fstep">
+                <div class="fnum">5</div>
+                <div class="fbody">
+                  <div class="ft">create_service_account(sa_&lt;slug&gt;)</div>
+                  <div class="fd">CREATE USER + GRANT ALL PRIVILEGES ON DATABASE + GRANT ALL FUNCTIONS</div>
+                </div>
+              </div>
+              <div class="fstep">
+                <div class="fnum">6</div>
+                <div class="fbody">
+                  <div class="ft">create_readonly_service_account(sa_&lt;slug&gt;_ro) — non-fatal</div>
+                  <div class="fd">GRANT SELECT ON ALL TABLES/VIEWS/MVs IN DATABASE &lt;slug&gt;</div>
+                  <div class="fw">⚠ failure here is logged but does not block workspace reaching ready</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-fe">DB</div>
+            <div class="fsteps">
+              <div class="fstep">
+                <div class="fnum">7</div>
+                <div class="fbody">
+                  <div class="ft">workspace status = ready · requester added to members</div>
+                  <div class="fd">sa_password Fernet-encrypted, stored in ontology_workspaces</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <p class="stitle" style="margin-bottom:12px;">DB tables — migrations 079–083, 106, 110–111</p>
+          <table class="tbl">
+            <thead><tr><th>Table</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>ontology_members</td><td>Individual users with ontology role</td></tr>
+              <tr><td>ontology_teams</td><td>Teams whose members inherit ontology role</td></tr>
+              <tr><td>ontology_db_clusters</td><td>Cluster configs + encrypted superuser creds</td></tr>
+              <tr><td>ontology_workspace_requests</td><td>Pending / approved / rejected requests</td></tr>
+              <tr><td>ontology_workspaces</td><td>Provisioned DBs — one row per workspace × cluster</td></tr>
+              <tr><td>ontology_workspace_members</td><td>Users with access to a workspace</td></tr>
+              <tr><td>ontology_workspace_ro_accounts</td><td>Read-only SA accounts per workspace</td></tr>
+              <tr><td>ontology_workspace_access_requests</td><td>Cross-workspace read grant requests (110)</td></tr>
+              <tr><td>ontology_pipelines</td><td>Pipeline definitions, DAG nodes and edges</td></tr>
+              <tr><td>ontology_udfs</td><td>Python UDF records (082)</td></tr>
+              <tr><td>ontologydb_catalogue_tables</td><td>Lineage cache per workspace (106)</td></tr>
+              <tr><td>ontology_monitor_subscribers</td><td>Degradation alert subscribers (111)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cl cl-warn mt2" style="margin-bottom:0;">
+          <h4>Service account credential rule</h4>
+          After provisioning, all workspace DB operations use
+          <code style="color:inherit;font-size:10px;">sa_&lt;slug&gt;</code>, never the cluster superuser.
+          SA has full DML but <strong>no</strong> CREATE DATABASE and no catalog-level grants.
+          SA must self-grant <code style="color:inherit;font-size:10px;">ALL PRIVILEGES ON TABLE &lt;db&gt;.&lt;t&gt;</code>
+          after each CREATE TABLE to enable information_schema visibility and DML.
+          (SA has <code style="color:inherit;font-size:10px;">user_admin</code> role by default so it can grant on its own objects.)
+        </div>
+      </div>
+    </div>
+
+    <!-- Workspace state machine -->
+    <div class="card mt3" style="padding:16px;">
+      <p class="stitle" style="margin-bottom:14px;">Workspace Status State Machine</p>
+      <svg viewBox="0 0 660 170" style="width:100%;display:block;" font-family="'Helvetica Neue',Arial,sans-serif">
+        <defs>
+          <marker id="ws-arq" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#716f6d"/></marker>
+          <marker id="ws-arg" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#006625"/></marker>
+          <marker id="ws-arr" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#c40015"/></marker>
+          <marker id="ws-arb" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#0047b3"/></marker>
+          <marker id="ws-aro" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#7a4f00"/></marker>
+        </defs>
+
+        <!-- REQUEST STATES (top row) -->
+        <text x="8" y="11" font-size="8" font-weight="700" fill="#7a4f00" letter-spacing="1">REQUEST</text>
+
+        <rect x="8"   y="16" width="108" height="36" rx="6" fill="#eeece8" stroke="#d8d5cf" stroke-width="1.5"/>
+        <text x="62"  y="31" text-anchor="middle" font-size="11" font-weight="700" fill="#716f6d">PENDING</text>
+        <text x="62"  y="45" text-anchor="middle" font-size="9"  fill="#aaa8a3">awaiting review</text>
+
+        <line x1="116" y1="34" x2="156" y2="34" stroke="#7a4f00" stroke-width="1.5" marker-end="url(#ws-aro)"/>
+        <text x="136" y="29" text-anchor="middle" font-size="8" fill="#7a4f00">approve</text>
+
+        <rect x="158" y="16" width="112" height="36" rx="6" fill="#fff2cc" stroke="#f0dda0" stroke-width="1.5"/>
+        <text x="214" y="31" text-anchor="middle" font-size="11" font-weight="700" fill="#7a4f00">APPROVED</text>
+        <text x="214" y="45" text-anchor="middle" font-size="9"  fill="#7a4f00">request row updated</text>
+
+        <line x1="62" y1="52" x2="62" y2="118" stroke="#c40015" stroke-width="1.5" marker-end="url(#ws-arr)"/>
+        <text x="70" y="90" font-size="8" fill="#c40015">reject</text>
+
+        <rect x="8" y="120" width="108" height="36" rx="6" fill="#fde8eb" stroke="#f4bfc4" stroke-width="1.5"/>
+        <text x="62" y="135" text-anchor="middle" font-size="11" font-weight="700" fill="#c40015">REJECTED</text>
+        <text x="62" y="149" text-anchor="middle" font-size="9"  fill="#c40015">request closed</text>
+
+        <!-- Divider between request and workspace states -->
+        <line x1="310" y1="8" x2="310" y2="162" stroke="#d8d5cf" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="316" y="11" font-size="8" font-weight="700" fill="#0047b3" letter-spacing="1">WORKSPACE (per cluster)</text>
+
+        <!-- APPROVED → PROVISIONING -->
+        <line x1="270" y1="34" x2="330" y2="58" stroke="#0047b3" stroke-width="1.5" marker-end="url(#ws-arb)"/>
+        <text x="292" y="44" font-size="8" fill="#0047b3">for each</text>
+        <text x="292" y="54" font-size="8" fill="#0047b3">cluster</text>
+
+        <rect x="332" y="44" width="128" height="36" rx="6" fill="#dceeff" stroke="#aad1f7" stroke-width="1.5"/>
+        <text x="396" y="59" text-anchor="middle" font-size="11" font-weight="700" fill="#0047b3">PROVISIONING</text>
+        <text x="396" y="73" text-anchor="middle" font-size="9"  fill="#0047b3">CREATE DB + SA</text>
+
+        <!-- PROVISIONING → READY -->
+        <line x1="460" y1="54" x2="520" y2="30" stroke="#006625" stroke-width="1.5" marker-end="url(#ws-arg)"/>
+        <text x="495" y="38" font-size="8" fill="#006625">success</text>
+
+        <rect x="522" y="16" width="96" height="36" rx="6" fill="#e0f4e8" stroke="#b3dfc3" stroke-width="1.5"/>
+        <text x="570" y="31" text-anchor="middle" font-size="11" font-weight="700" fill="#006625">READY</text>
+        <text x="570" y="45" text-anchor="middle" font-size="9"  fill="#006625">operational</text>
+
+        <!-- PROVISIONING → ERROR -->
+        <line x1="460" y1="74" x2="520" y2="110" stroke="#c40015" stroke-width="1.5" marker-end="url(#ws-arr)"/>
+        <text x="495" y="100" font-size="8" fill="#c40015">SR error</text>
+
+        <rect x="522" y="100" width="96" height="36" rx="6" fill="#fde8eb" stroke="#f4bfc4" stroke-width="1.5"/>
+        <text x="570" y="115" text-anchor="middle" font-size="11" font-weight="700" fill="#c40015">ERROR</text>
+        <text x="570" y="129" text-anchor="middle" font-size="9"  fill="#c40015">error_msg set</text>
+
+        <!-- Legend band -->
+        <rect x="8" y="156" width="130" height="12" rx="3" fill="#fff2cc" stroke="#f0dda0"/>
+        <text x="73" y="165" text-anchor="middle" font-size="8" fill="#7a4f00">ontology_workspace_requests</text>
+        <rect x="330" y="156" width="136" height="12" rx="3" fill="#dceeff" stroke="#aad1f7"/>
+        <text x="398" y="165" text-anchor="middle" font-size="8" fill="#0047b3">ontology_workspaces (per cluster)</text>
+      </svg>
+    </div>
+  </div><!-- /ont-lifecycle -->
+
+  <!-- ── PIPELINE MANAGER TAB ─────────────────────────────────── -->
+  <div id="ont-pipeline" class="iview">
+
+    <!-- Pipeline DAG Example -->
+    <div class="card" style="margin-bottom:20px;padding:16px;">
+      <p class="stitle" style="margin-bottom:14px;">Example Pipeline DAG (Ontology DB engine)</p>
+      <svg viewBox="0 0 660 200" style="width:100%;display:block;" font-family="'Helvetica Neue',Arial,sans-serif">
+        <defs>
+          <marker id="dag-arr" markerWidth="6" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0 0,6 2.5,0 5" fill="#aaa8a3"/></marker>
+        </defs>
+
+        <!-- LEGEND -->
+        <rect x="0" y="0" width="660" height="22" rx="4" fill="#eeece8"/>
+        <rect x="8"   y="5" width="12" height="12" rx="3" fill="#dceeff" stroke="#aad1f7"/>
+        <text x="24"  y="15" font-size="9" fill="#0047b3" font-weight="600">Source</text>
+        <rect x="80"  y="5" width="12" height="12" rx="3" fill="#e0f4e8" stroke="#b3dfc3"/>
+        <text x="96"  y="15" font-size="9" fill="#006625" font-weight="600">Transformer</text>
+        <rect x="178" y="5" width="12" height="12" rx="3" fill="#e0f4e8" stroke="#006625" stroke-width="2"/>
+        <text x="194" y="15" font-size="9" fill="#006625" font-weight="600">deployed</text>
+        <rect x="260" y="5" width="12" height="12" rx="3" fill="#eeece8" stroke="#aaa8a3" stroke-dasharray="3,2"/>
+        <text x="276" y="15" font-size="9" fill="#716f6d" font-weight="600">undeployed</text>
+        <rect x="360" y="5" width="12" height="12" rx="3" fill="#fde8eb" stroke="#c40015" stroke-width="2"/>
+        <text x="376" y="15" font-size="9" fill="#c40015" font-weight="600">error</text>
+
+        <!-- GCS Source (deployed) -->
+        <rect x="8"  y="36" width="138" height="52" rx="6" fill="#dceeff" stroke="#006625" stroke-width="2"/>
+        <text x="77" y="56" text-anchor="middle" font-size="10" font-weight="700" fill="#0047b3">GCS / Object Storage</text>
+        <text x="77" y="70" text-anchor="middle" font-size="9"  fill="#0047b3">gs://bucket/events/*.json.gz</text>
+        <rect x="96" y="78" width="38" height="4" rx="2" fill="#006625" opacity=".3"/>
+        <text x="115" y="86" text-anchor="middle" font-size="7" fill="#006625">deployed</text>
+
+        <!-- Kafka Source (deployed) -->
+        <rect x="8" y="126" width="138" height="52" rx="6" fill="#dceeff" stroke="#006625" stroke-width="2"/>
+        <text x="77" y="146" text-anchor="middle" font-size="10" font-weight="700" fill="#0047b3">Kafka Stream</text>
+        <text x="77" y="160" text-anchor="middle" font-size="9"  fill="#0047b3">ROUTINE LOAD topic=events</text>
+        <rect x="96" y="168" width="38" height="4" rx="2" fill="#006625" opacity=".3"/>
+        <text x="115" y="176" text-anchor="middle" font-size="7" fill="#006625">deployed</text>
+
+        <!-- Edges Source → Table -->
+        <line x1="146" y1="62"  x2="194" y2="80"  stroke="#aaa8a3" stroke-width="1.5" marker-end="url(#dag-arr)"/>
+        <line x1="146" y1="152" x2="194" y2="126" stroke="#aaa8a3" stroke-width="1.5" marker-end="url(#dag-arr)"/>
+
+        <!-- Table A (deployed) -->
+        <rect x="196" y="60" width="148" height="52" rx="6" fill="#e0f4e8" stroke="#006625" stroke-width="2"/>
+        <text x="270" y="80" text-anchor="middle" font-size="10" font-weight="700" fill="#006625">tbl_events_raw</text>
+        <text x="270" y="94" text-anchor="middle" font-size="9"  fill="#006625">DUPLICATE KEY · HASH(id)</text>
+        <rect x="245" y="102" width="50" height="4" rx="2" fill="#006625" opacity=".3"/>
+        <text x="270" y="110" text-anchor="middle" font-size="7" fill="#006625">deployed</text>
+
+        <!-- Table B (undeployed) -->
+        <rect x="196" y="126" width="148" height="52" rx="6" fill="#eeece8" stroke="#aaa8a3" stroke-dasharray="4,2"/>
+        <text x="270" y="146" text-anchor="middle" font-size="10" font-weight="700" fill="#716f6d">tbl_events_enriched</text>
+        <text x="270" y="160" text-anchor="middle" font-size="9"  fill="#716f6d">JOIN with dim_users</text>
+        <rect x="245" y="168" width="50" height="4" rx="2" fill="#aaa8a3" opacity=".4"/>
+        <text x="270" y="176" text-anchor="middle" font-size="7" fill="#716f6d">undeployed</text>
+
+        <!-- Edges Table → MV -->
+        <line x1="344" y1="86"  x2="392" y2="100" stroke="#aaa8a3" stroke-width="1.5" marker-end="url(#dag-arr)"/>
+        <line x1="344" y1="152" x2="392" y2="120" stroke="#aaa8a3" stroke-width="1.5" marker-end="url(#dag-arr)"/>
+
+        <!-- MV (error) -->
+        <rect x="394" y="84" width="148" height="52" rx="6" fill="#fde8eb" stroke="#c40015" stroke-width="2"/>
+        <text x="468" y="104" text-anchor="middle" font-size="10" font-weight="700" fill="#c40015">mv_hourly_counts</text>
+        <text x="468" y="118" text-anchor="middle" font-size="9"  fill="#c40015">REFRESH ASYNC EVERY 1 HOUR</text>
+        <rect x="443" y="126" width="50" height="4" rx="2" fill="#c40015" opacity=".4"/>
+        <text x="468" y="134" text-anchor="middle" font-size="7" fill="#c40015">error — check SQL</text>
+
+        <!-- Edge MV → View -->
+        <line x1="542" y1="110" x2="592" y2="110" stroke="#aaa8a3" stroke-width="1.5" marker-end="url(#dag-arr)"/>
+
+        <!-- View (deployed) -->
+        <rect x="594" y="84" width="58" height="52" rx="6" fill="#e0f4e8" stroke="#006625" stroke-width="2"/>
+        <text x="623" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="#006625">v_report</text>
+        <text x="623" y="122" text-anchor="middle" font-size="8" fill="#006625">VIEW</text>
+      </svg>
+      <div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-top:10px;line-height:1.6;">
+        Nodes carry per-status colour: <strong style="color:#006625;">green border</strong> = deployed · <strong style="color:#aaa8a3;">dashed</strong> = undeployed · <strong style="color:#c40015;">red border</strong> = error (hover to see message).
+        Topological order is resolved automatically on Deploy All — dependents always deploy after their dependencies.
+      </div>
+    </div>
+
+    <div class="cl cl-info" style="margin-bottom:16px;">
+      <h4>DAG canvas — engines &amp; node types</h4>
+      Each pipeline selects exactly one engine at creation (immutable). Sources are root-only (no incoming edges);
+      Transformers accept edges from Sources or other Transformers. Deploy is staged, idempotent, and DAG-resolved.
+      Every Save, Autosave (60 s), and Deploy creates a version snapshot (max 50 per pipeline). Rollback writes a new version from the old snapshot.
+    </div>
+    <div class="g3">
+      <div class="card">
+        <p class="stitle" style="margin-bottom:10px;">Engine: Ontology DB (default)</p>
+        <div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-bottom:10px;">Uses workspace SA creds — no per-pipeline credential needed.</div>
+        <table class="tbl">
+          <thead><tr><th>Category</th><th>Node Type</th><th>Generates</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--info-txt);">Source</td><td>object_storage</td><td>CREATE PIPE … AS INSERT INTO … SELECT * FROM FILES(…)</td></tr>
+            <tr><td style="color:var(--info-txt);">Source</td><td>kafka</td><td>CREATE ROUTINE LOAD … FROM KAFKA(…)</td></tr>
+            <tr><td style="color:var(--info-txt);">Source</td><td>db_extract</td><td>Extract record + Broker Load</td></tr>
+            <tr><td style="color:var(--success-txt);">Transformer</td><td>table</td><td>CREATE TABLE IF NOT EXISTS … ENGINE=OLAP</td></tr>
+            <tr><td style="color:var(--success-txt);">Transformer</td><td>materialized_view</td><td>CREATE MATERIALIZED VIEW … REFRESH ASYNC</td></tr>
+            <tr><td style="color:var(--success-txt);">Transformer</td><td>view</td><td>CREATE OR REPLACE VIEW …</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <p class="stitle" style="margin-bottom:10px;">Engine: BigQuery</p>
+        <div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-bottom:10px;">Uses bq_credential_id (ADC or SA JSON) selected at pipeline creation.</div>
+        <table class="tbl">
+          <thead><tr><th>Category</th><th>Node Type</th><th>Generates</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--info-txt);">Source</td><td>bq_gcs_load</td><td>bigquery.LoadJobConfig — GCS URI → BQ table</td></tr>
+            <tr><td style="color:var(--success-txt);">Transformer</td><td>table</td><td>CREATE TABLE IF NOT EXISTS `project.dataset.table`</td></tr>
+            <tr><td style="color:var(--success-txt);">Transformer</td><td>view</td><td>CREATE OR REPLACE VIEW …</td></tr>
+            <tr><td style="color:var(--success-txt);">Transformer</td><td>materialized_view</td><td>CREATE MATERIALIZED VIEW …</td></tr>
+          </tbody>
+        </table>
+        <div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-top:8px;">Deploy engine: _BigQueryDeployEngine in services/ontology_deploy.py · uses google.cloud.bigquery.Client via utils.extract_runner.build_bq_client().</div>
+      </div>
+      <div class="card">
+        <p class="stitle" style="margin-bottom:10px;">Engine: Spanner</p>
+        <div style="font-family:var(--text);font-size:11px;color:var(--txt2);margin-bottom:10px;">Uses spanner_connection_id (workspace-scoped project/instance/database + SA JSON).</div>
+        <table class="tbl">
+          <thead><tr><th>Category</th><th>Node Type</th><th>Generates</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--info-txt);">Source</td><td>spanner_gcs_import</td><td>Spanner GCS import — manual Dataflow trigger required</td></tr>
+            <tr><td style="color:var(--success-txt);">Transformer</td><td>table</td><td>CREATE TABLE … via database.update_ddl()</td></tr>
+            <tr><td style="color:var(--success-txt);">Transformer</td><td>view</td><td>CREATE OR REPLACE VIEW … SQL SECURITY INVOKER</td></tr>
+          </tbody>
+        </table>
+        <div class="cl cl-warn mt2" style="margin-bottom:0;font-size:11px;"><h4>GCS import note</h4>Deploy engine emits a warning — user must trigger Dataflow job via GCP console or gcloud then mark node deployed.</div>
+      </div>
+    </div>
+
+    <!-- Deploy stages -->
+    <div class="card mt3">
+      <p class="stitle" style="margin-bottom:12px;">Deploy All — services/ontology_deploy.py (staged · idempotent · DAG-resolved)</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;font-family:var(--text);font-size:12px;line-height:1.6;">
+        <div class="card" style="border-top:3px solid var(--info-txt);padding:12px;">
+          <div style="font-weight:700;margin-bottom:4px;">1 · Tables</div>
+          CREATE IF NOT EXISTS + ALTER TABLE ADD COLUMN for drift. Destructive changes (column drop / type change) abort with error.
+        </div>
+        <div class="card" style="border-top:3px solid var(--success-txt);padding:12px;">
+          <div style="font-weight:700;margin-bottom:4px;">2 · Materialized Views</div>
+          Drop + recreate on query-hash mismatch. RBAC grants backed up before drop and restored after recreate.
+        </div>
+        <div class="card" style="border-top:3px solid var(--brand);padding:12px;">
+          <div style="font-weight:700;margin-bottom:4px;">3 · Views</div>
+          CREATE OR REPLACE VIEW in topological order (dependents always after dependencies).
+        </div>
+        <div class="card" style="border-top:3px solid var(--warn-txt);padding:12px;">
+          <div style="font-weight:700;margin-bottom:4px;">4 · Ingestion</div>
+          CREATE OR REPLACE PIPE. STOP + CREATE for Routine Loads.
+        </div>
+      </div>
+    </div>
+
+    <!-- Lineage + AI -->
+    <div class="g2 mt3">
+      <div class="cl cl-info" style="margin-bottom:0;">
+        <h4>Lineage detection</h4>
+        Per-node: <code style="font-size:10px;color:inherit;">POST /ontology/api/ws/&lt;wid&gt;/detect-lineage</code><br>
+        Full pipeline: <code style="font-size:10px;color:inherit;">POST /ontology/api/ws/&lt;wid&gt;/pipeline-lineage</code><br><br>
+        Checks local catalogue cache first (no SR round-trip on cache hit). Miss triggers a live
+        <code style="font-size:10px;color:inherit;">information_schema LIKE</code> query + background workspace_scan job
+        to warm cache. Cache invalidated after Deploy All and every 24 h.
+        Downstream ghost nodes appear to the right (teal); upstream ghosts to the left (purple).
+      </div>
+      <div class="cl cl-ok" style="margin-bottom:0;">
+        <h4>AI Generate SQL</h4>
+        <code style="font-size:10px;color:inherit;">POST /ontology/api/ws/&lt;wid&gt;/pipelines/&lt;pid&gt;/generate-sql</code><br><br>
+        Sends the selected node config, upstream node schemas + SQL (lineage context), downstream node context,
+        and Ontology DB design guidelines (data models, partitioning, bucketing, sort keys) to Gemini.
+        Returns ready-to-deploy SQL. Same pattern as the SQL IDE AI assist but scoped to a pipeline node.
+      </div>
+    </div>
+  </div><!-- /ont-pipeline -->
+
+  <!-- ── API REFERENCE TAB ─────────────────────────────────────── -->
+  <div id="ont-api" class="iview">
+    <div class="g2">
+      <div>
+        <div class="card">
+          <p class="stitle" style="margin-bottom:12px;">User routes — blueprints/ontology.py</p>
+          <table class="tbl">
+            <thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>GET</td><td>/ontology/</td><td>login</td><td>Redirect → /dashboard?tab=ontology</td></tr>
+              <tr><td>POST</td><td>/ontology/api/workspace-request</td><td>ontology/admin</td><td>Submit workspace request</td></tr>
+              <tr><td>GET</td><td>/ontology/api/workspaces</td><td>ontology/admin</td><td>List workspaces + SA creds (owner/admin only)</td></tr>
+              <tr><td>GET</td><td>/ontology/api/workspaces/discoverable</td><td>ontology</td><td>Non-member workspaces (for cross-access requests)</td></tr>
+              <tr><td>GET</td><td>/ontology/api/clusters</td><td>ontology/admin</td><td>List clusters (name + id, no credentials)</td></tr>
+              <tr><td>GET</td><td>/ontology/api/ws/&lt;wid&gt;/schema</td><td>member/admin</td><td>Table schema + cross-workspace tables</td></tr>
+              <tr><td>POST</td><td>/ontology/api/ws/&lt;wid&gt;/query</td><td>member/admin</td><td>Execute SQL via workspace SA</td></tr>
+              <tr><td>POST</td><td>/ontology/api/ws/&lt;wid&gt;/sql-assist</td><td>member/admin</td><td>Gemini AI SQL suggestions (schema + query context)</td></tr>
+              <tr><td>CRUD</td><td>/ontology/api/ws/&lt;wid&gt;/pipelines[/&lt;pid&gt;]</td><td>member/admin</td><td>Pipeline CRUD + deploy + versions + lineage</td></tr>
+              <tr><td>POST</td><td>/ontology/api/ws/&lt;wid&gt;/pipelines/&lt;pid&gt;/generate-sql</td><td>member/admin</td><td>AI SQL generation for a pipeline node</td></tr>
+              <tr><td>POST</td><td>/ontology/api/ws/&lt;wid&gt;/detect-lineage</td><td>member/admin</td><td>Per-node upstream/downstream lineage (cache-first)</td></tr>
+              <tr><td>POST</td><td>/ontology/api/ws/&lt;wid&gt;/pipeline-lineage</td><td>member/admin</td><td>Full-pipeline lineage with ghost nodes</td></tr>
+              <tr><td>CRUD</td><td>/ontology/api/ws/&lt;wid&gt;/udfs[/&lt;uid&gt;]</td><td>member/admin</td><td>Python UDF CRUD + deploy + AI generate</td></tr>
+              <tr><td>CRUD</td><td>/ontology/api/ws/&lt;wid&gt;/ro-accounts[/&lt;ro_id&gt;]</td><td>owner/admin</td><td>Read-only SA management</td></tr>
+              <tr><td>POST/GET</td><td>/ontology/api/ws/&lt;wid&gt;/access-request[s]</td><td>ontology/owner</td><td>Cross-workspace access requests</td></tr>
+              <tr><td>GET/PUT</td><td>/ontology/api/ws/&lt;wid&gt;/monitor/subscribers</td><td>owner/admin</td><td>Degradation alert subscriber management</td></tr>
+              <tr><td>CRUD</td><td>/ontology/api/ws/&lt;wid&gt;/spanner-connections[/&lt;cid&gt;]</td><td>owner/admin</td><td>Workspace-scoped Spanner connection config</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <p class="stitle" style="margin-bottom:12px;">Admin routes — blueprints/admin.py (Ontology section)</p>
+          <table class="tbl">
+            <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>GET/POST/DELETE</td><td>/admin/api/ontology/members[/&lt;u&gt;]</td><td>List / add / remove individual members</td></tr>
+              <tr><td>GET/POST/DELETE</td><td>/admin/api/ontology/teams[/&lt;tid&gt;]</td><td>List / add / remove team grants</td></tr>
+              <tr><td>GET/POST/DELETE</td><td>/admin/api/ontology/clusters[/&lt;cid&gt;]</td><td>List / add (+ pre-boot) / delete clusters</td></tr>
+              <tr><td>GET</td><td>/admin/api/ontology/clusters/&lt;cid&gt;/health</td><td>Live FE/BE node health (30 s server-side TTL cache)</td></tr>
+              <tr><td>GET</td><td>/admin/api/ontology/workspace-requests</td><td>List pending workspace requests</td></tr>
+              <tr><td>POST</td><td>/admin/api/ontology/workspace-requests/&lt;id&gt;/approve</td><td>Approve + CREATE DATABASE + provision SA + RO SA</td></tr>
+              <tr><td>POST</td><td>/admin/api/ontology/workspace-requests/&lt;id&gt;/reject</td><td>Reject request</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card mt2">
+          <p class="stitle" style="margin-bottom:12px;">Key service files</p>
+          <table class="tbl">
+            <thead><tr><th>File</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td>services/ontologydb.py</td><td>Cluster connectivity — test, create_superuser, create_database, create_service_account, grant/revoke cross-db read</td></tr>
+              <tr><td>services/ontology_deploy.py</td><td>Staged idempotent deploy engine (SR / BQ / Spanner engines)</td></tr>
+              <tr><td>services/ontologydb_cataloguer.py</td><td>Background workspace catalogue + lineage cache (migration 106)</td></tr>
+              <tr><td>catalyst_db.py</td><td>All ontology DB functions: is_user_ontology_member, create_ontology_workspace, get_ontology_cluster_creds, …</td></tr>
+              <tr><td>blueprints/ontology.py</td><td>User-facing API routes</td></tr>
+              <tr><td>blueprints/admin.py</td><td>Admin management routes (Ontology section)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div><!-- /ont-api -->
+
+</div><!-- /ontology panel -->
+
+
+<!-- ══════════════════════════════════════
+     CATALOG ECOSYSTEM PANEL
+══════════════════════════════════════ -->
+<div id="catalogs" class="panel">
+  <p class="stitle">Ontology DB — Catalog Ecosystem</p>
+
+  <div class="cl cl-info" style="margin-bottom:20px;">
+    <h4>What is an External Catalog?</h4>
+    An External Catalog lets Ontology DB query data in external systems without moving it.
+    Users write standard SQL; Ontology DB pushes predicates, prunes columns, and reads data
+    via the catalog&#39;s native API. Internal (native) tables live in <code style="color:inherit;font-size:10px;">default_catalog</code>.
+    All catalogs can be JOINed together in a single query.
+  </div>
+
+  <svg viewBox="0 0 940 740" style="width:100%;max-height:780px;display:block;font-family:'VZ','Helvetica Neue',Arial,sans-serif;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="rCore" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#1d1d1b"/>
+        <stop offset="100%" stop-color="#3a3a38"/>
+      </radialGradient>
+      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="rgba(0,0,0,0.15)"/>
+      </filter>
+      <marker id="cArrow" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+        <polygon points="0 0,7 2.5,0 5" fill="#aaa8a3"/>
+      </marker>
+      <marker id="cArrowB" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+        <polygon points="0 0,7 2.5,0 5" fill="#0047b3"/>
+      </marker>
+      <marker id="cArrowR" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+        <polygon points="0 0,7 2.5,0 5" fill="#e10014"/>
+      </marker>
+      <marker id="cArrowG" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+        <polygon points="0 0,7 2.5,0 5" fill="#7a4f00"/>
+      </marker>
+    </defs>
+
+    <!-- ── Central Ontology DB node ── -->
+    <ellipse cx="470" cy="320" rx="88" ry="56" fill="url(#rCore)" filter="url(#shadow)"/>
+    <text x="470" y="312" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">Ontology DB</text>
+    <text x="470" y="330" text-anchor="middle" font-size="10" fill="#aaa8a3">(Ontology DB 4.1.4)</text>
+    <text x="470" y="345" text-anchor="middle" font-size="10" fill="#aaa8a3">MySQL-compatible SQL</text>
+
+    <!-- ── GROUP LABELS ── -->
+    <!-- Internal -->
+    <text x="122" y="52"  text-anchor="middle" font-size="9" font-weight="700" fill="#aaa8a3" letter-spacing="1">INTERNAL</text>
+    <!-- Open Table Formats -->
+    <text x="200" y="190" text-anchor="middle" font-size="9" font-weight="700" fill="#0047b3" letter-spacing="1">OPEN TABLE FORMATS</text>
+    <!-- Cloud / Databases -->
+    <text x="200" y="430" text-anchor="middle" font-size="9" font-weight="700" fill="#7a4f00" letter-spacing="1">DATABASES / SEARCH</text>
+    <!-- Cloud Storage -->
+    <text x="730" y="190" text-anchor="middle" font-size="9" font-weight="700" fill="#006625" letter-spacing="1">CLOUD STORAGE</text>
+    <!-- Future -->
+    <text x="750" y="430" text-anchor="middle" font-size="9" font-weight="700" fill="#c40015" letter-spacing="1">FUTURE EXPANSION</text>
+    <!-- Object Storage -->
+    <text x="470" y="560" text-anchor="middle" font-size="9" font-weight="700" fill="#716f6d" letter-spacing="1">OBJECT STORAGE / FILE</text>
+
+    <!-- ══ INTERNAL CATALOG ══ -->
+    <rect x="30" y="56" width="182" height="64" rx="8" fill="#1d1d1b" stroke="#3a3a38" filter="url(#shadow)"/>
+    <text x="121" y="78" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">default_catalog</text>
+    <text x="121" y="93" text-anchor="middle" font-size="9"  fill="#aaa8a3">Native OLAP tables</text>
+    <text x="121" y="107" text-anchor="middle" font-size="9" fill="#aaa8a3">Materialized Views · MV Rewrite</text>
+    <!-- Arrow internal → core -->
+    <line x1="212" y1="102" x2="383" y2="298" stroke="#aaa8a3" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#cArrow)"/>
+
+    <!-- ══ OPEN TABLE FORMATS ══ -->
+    <!-- Hive -->
+    <rect x="30" y="200" width="130" height="48" rx="6" fill="#fff" stroke="#aad1f7" filter="url(#shadow)"/>
+    <text x="95" y="220" text-anchor="middle" font-size="12" font-weight="700" fill="#0047b3">Hive</text>
+    <text x="95" y="234" text-anchor="middle" font-size="9"  fill="#716f6d">Hive Metastore</text>
+    <text x="95" y="246" text-anchor="middle" font-size="9"  fill="#716f6d">ORC · Parquet · Avro</text>
+    <!-- Iceberg -->
+    <rect x="175" y="200" width="130" height="48" rx="6" fill="#fff" stroke="#aad1f7" filter="url(#shadow)"/>
+    <text x="240" y="220" text-anchor="middle" font-size="12" font-weight="700" fill="#0047b3">Iceberg</text>
+    <text x="240" y="234" text-anchor="middle" font-size="9"  fill="#716f6d">Iceberg v1/v2</text>
+    <text x="240" y="246" text-anchor="middle" font-size="9"  fill="#716f6d">ACID · Schema evolution</text>
+    <!-- Hudi -->
+    <rect x="30" y="260" width="130" height="48" rx="6" fill="#fff" stroke="#aad1f7" filter="url(#shadow)"/>
+    <text x="95" y="280" text-anchor="middle" font-size="12" font-weight="700" fill="#0047b3">Hudi</text>
+    <text x="95" y="294" text-anchor="middle" font-size="9"  fill="#716f6d">Copy-on-Write</text>
+    <text x="95" y="306" text-anchor="middle" font-size="9"  fill="#716f6d">Merge-on-Read</text>
+    <!-- Delta Lake -->
+    <rect x="175" y="260" width="130" height="48" rx="6" fill="#fff" stroke="#aad1f7" filter="url(#shadow)"/>
+    <text x="240" y="280" text-anchor="middle" font-size="12" font-weight="700" fill="#0047b3">Delta Lake</text>
+    <text x="240" y="294" text-anchor="middle" font-size="9"  fill="#716f6d">Delta protocol v1/v2</text>
+    <text x="240" y="306" text-anchor="middle" font-size="9"  fill="#716f6d">Deletion vectors</text>
+    <!-- Paimon -->
+    <rect x="100" y="320" width="130" height="48" rx="6" fill="#fff" stroke="#aad1f7" filter="url(#shadow)"/>
+    <text x="165" y="340" text-anchor="middle" font-size="12" font-weight="700" fill="#0047b3">Paimon</text>
+    <text x="165" y="354" text-anchor="middle" font-size="9"  fill="#716f6d">Streaming lakehouse</text>
+    <text x="165" y="366" text-anchor="middle" font-size="9"  fill="#716f6d">LSM-based storage</text>
+    <!-- Arrows OTF → core -->
+    <line x1="160" y1="224" x2="384" y2="298" stroke="#0047b3" stroke-width="1.5" marker-end="url(#cArrowB)"/>
+    <line x1="305" y1="224" x2="384" y2="298" stroke="#0047b3" stroke-width="1.5" marker-end="url(#cArrowB)"/>
+    <line x1="160" y1="284" x2="384" y2="310" stroke="#0047b3" stroke-width="1.5" marker-end="url(#cArrowB)"/>
+    <line x1="305" y1="284" x2="384" y2="310" stroke="#0047b3" stroke-width="1.5" marker-end="url(#cArrowB)"/>
+    <line x1="230" y1="368" x2="384" y2="330" stroke="#0047b3" stroke-width="1.5" marker-end="url(#cArrowB)"/>
+
+    <!-- ══ DATABASES / SEARCH ══ -->
+    <!-- JDBC -->
+    <rect x="30" y="440" width="130" height="58" rx="6" fill="#fff" stroke="#f0dda0" filter="url(#shadow)"/>
+    <text x="95" y="460" text-anchor="middle" font-size="12" font-weight="700" fill="#7a4f00">JDBC</text>
+    <text x="95" y="474" text-anchor="middle" font-size="9"  fill="#716f6d">MySQL · PostgreSQL</text>
+    <text x="95" y="486" text-anchor="middle" font-size="9"  fill="#716f6d">Oracle · SQL Server</text>
+    <text x="95" y="497" text-anchor="middle" font-size="9"  fill="#716f6d">ClickHouse · Hologres</text>
+    <!-- Elasticsearch -->
+    <rect x="175" y="440" width="130" height="58" rx="6" fill="#fff" stroke="#f0dda0" filter="url(#shadow)"/>
+    <text x="240" y="460" text-anchor="middle" font-size="12" font-weight="700" fill="#7a4f00">Elasticsearch</text>
+    <text x="240" y="474" text-anchor="middle" font-size="9"  fill="#716f6d">Full-text search</text>
+    <text x="240" y="486" text-anchor="middle" font-size="9"  fill="#716f6d">ES index → SQL</text>
+    <text x="240" y="497" text-anchor="middle" font-size="9"  fill="#716f6d">Predicate pushdown</text>
+    <!-- ODPS -->
+    <rect x="30" y="510" width="130" height="48" rx="6" fill="#fff" stroke="#f0dda0" filter="url(#shadow)"/>
+    <text x="95" y="530" text-anchor="middle" font-size="12" font-weight="700" fill="#7a4f00">ODPS</text>
+    <text x="95" y="544" text-anchor="middle" font-size="9"  fill="#716f6d">Alibaba MaxCompute</text>
+    <text x="95" y="556" text-anchor="middle" font-size="9"  fill="#716f6d">JNI-based reader</text>
+    <!-- Arrows DB → core -->
+    <line x1="160" y1="469" x2="384" y2="340" stroke="#7a4f00" stroke-width="1.5" marker-end="url(#cArrowG)"/>
+    <line x1="305" y1="469" x2="384" y2="340" stroke="#7a4f00" stroke-width="1.5" marker-end="url(#cArrowG)"/>
+    <line x1="160" y1="534" x2="384" y2="350" stroke="#7a4f00" stroke-width="1.5" marker-end="url(#cArrowG)"/>
+
+    <!-- ══ CLOUD STORAGE — GCS + S3 callout ══ -->
+    <rect x="608" y="155" width="277" height="22" rx="5" fill="#e0f4e8" stroke="#006625" stroke-width="1"/>
+    <text x="617" y="166" font-size="9" font-weight="700" fill="#006625">Supported storage:</text>
+    <!-- GCS pill -->
+    <rect x="704" y="157" width="40" height="16" rx="4" fill="#fff" stroke="#aad1f7"/>
+    <text x="724" y="169" text-anchor="middle" font-size="8" font-weight="700" fill="#0047b3">GCS</text>
+    <!-- S3 pill -->
+    <rect x="749" y="157" width="34" height="16" rx="4" fill="#fff" stroke="#f0dda0"/>
+    <text x="766" y="169" text-anchor="middle" font-size="8" font-weight="700" fill="#7a4f00">S3</text>
+    <!-- ADLS pill -->
+    <rect x="788" y="157" width="40" height="16" rx="4" fill="#fff" stroke="#d8d5cf"/>
+    <text x="808" y="169" text-anchor="middle" font-size="8" font-weight="700" fill="#716f6d">ADLS</text>
+    <!-- HDFS pill -->
+    <rect x="833" y="157" width="40" height="16" rx="4" fill="#fff" stroke="#d8d5cf"/>
+    <text x="853" y="169" text-anchor="middle" font-size="8" font-weight="700" fill="#716f6d">HDFS</text>
+    <!-- Kudu -->
+    <rect x="610" y="200" width="130" height="48" rx="6" fill="#fff" stroke="#b3dfc3" filter="url(#shadow)"/>
+    <text x="675" y="220" text-anchor="middle" font-size="12" font-weight="700" fill="#006625">Apache Kudu</text>
+    <text x="675" y="234" text-anchor="middle" font-size="9"  fill="#716f6d">Low-latency analytics</text>
+    <text x="675" y="246" text-anchor="middle" font-size="9"  fill="#716f6d">Column-oriented storage</text>
+    <!-- Unified -->
+    <rect x="755" y="200" width="130" height="48" rx="6" fill="#fff" stroke="#b3dfc3" filter="url(#shadow)"/>
+    <text x="820" y="220" text-anchor="middle" font-size="12" font-weight="700" fill="#006625">Unified</text>
+    <text x="820" y="234" text-anchor="middle" font-size="9"  fill="#716f6d">Hive-compatible HMS</text>
+    <text x="820" y="246" text-anchor="middle" font-size="9"  fill="#716f6d">Auto table-format detect</text>
+    <!-- File -->
+    <rect x="680" y="260" width="130" height="48" rx="6" fill="#fff" stroke="#b3dfc3" filter="url(#shadow)"/>
+    <text x="745" y="280" text-anchor="middle" font-size="12" font-weight="700" fill="#006625">File Catalog</text>
+    <text x="745" y="294" text-anchor="middle" font-size="9"  fill="#0047b3" font-weight="600">GCS · S3 · ADLS · HDFS</text>
+    <text x="745" y="306" text-anchor="middle" font-size="9"  fill="#716f6d">Parquet · ORC · CSV · JSON · Avro</text>
+    <!-- Arrows Cloud → core -->
+    <line x1="610" y1="224" x2="558" y2="298" stroke="#006625" stroke-width="1.5" marker-end="url(#cArrowB)" style="stroke:#006625"/>
+    <line x1="755" y1="224" x2="558" y2="298" stroke="#006625" stroke-width="1.5" marker-end="url(#cArrowB)" style="stroke:#006625"/>
+    <line x1="680" y1="284" x2="558" y2="310" stroke="#006625" stroke-width="1.5" marker-end="url(#cArrowB)" style="stroke:#006625"/>
+
+    <!-- ══ FUTURE EXPANSION ══ -->
+    <!-- BigQuery -->
+    <rect x="620" y="440" width="145" height="62" rx="8" fill="#fde8eb" stroke="#e10014" stroke-width="2" filter="url(#shadow)"/>
+    <text x="692" y="458" text-anchor="middle" font-size="12" font-weight="700" fill="#c40015">BigQuery</text>
+    <text x="692" y="472" text-anchor="middle" font-size="9"  fill="#716f6d">Storage Read API</text>
+    <text x="692" y="484" text-anchor="middle" font-size="9"  fill="#716f6d">Arrow streaming · WIF</text>
+    <text x="692" y="494" text-anchor="middle" font-size="9"  fill="#716f6d">MV query rewrite</text>
+    <rect x="632" y="499" width="80" height="14" rx="3" fill="#e10014"/>
+    <text x="672" y="510" text-anchor="middle" font-size="8" font-weight="700" fill="#fff">NEW · Aug 17</text>
+    <!-- Spanner -->
+    <rect x="775" y="440" width="145" height="62" rx="8" fill="#fff2cc" stroke="#7a4f00" stroke-width="2" stroke-dasharray="5,3" filter="url(#shadow)"/>
+    <text x="847" y="455" text-anchor="middle" font-size="12" font-weight="700" fill="#7a4f00">Cloud Spanner</text>
+    <text x="847" y="467" text-anchor="middle" font-size="9" fill="#7a4f00">via Cloud Spanner</text>
+    <text x="847" y="479" text-anchor="middle" font-size="9"  fill="#716f6d">Global distributed SQL</text>
+    <text x="847" y="490" text-anchor="middle" font-size="9"  fill="#716f6d">Spanner API · gRPC</text>
+    <text x="847" y="501" text-anchor="middle" font-size="9"  fill="#716f6d">Strong consistency</text>
+    <rect x="800" y="500" width="98" height="14" rx="3" fill="#7a4f00" opacity="0.6"/>
+    <text x="849" y="511" text-anchor="middle" font-size="8" font-weight="700" fill="#fff">ROADMAP</text>
+    <!-- Arrows future → core (dashed red) -->
+    <line x1="622" y1="468" x2="558" y2="340" stroke="#e10014" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#cArrowR)"/>
+    <line x1="775" y1="468" x2="558" y2="340" stroke="#7a4f00" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#cArrowG)"/>
+
+    <!-- ══ OBJECT STORAGE / FILE ══ -->
+    <rect x="310" y="565" width="140" height="48" rx="6" fill="#fff" stroke="#d8d5cf" filter="url(#shadow)"/>
+    <text x="380" y="584" text-anchor="middle" font-size="12" font-weight="600" fill="#000">GCS / S3</text>
+    <text x="380" y="598" text-anchor="middle" font-size="9"  fill="#716f6d">Google Cloud Storage</text>
+    <text x="380" y="609" text-anchor="middle" font-size="9"  fill="#716f6d">Amazon S3 · ADLS</text>
+    <rect x="465" y="565" width="140" height="48" rx="6" fill="#fff" stroke="#d8d5cf" filter="url(#shadow)"/>
+    <text x="535" y="584" text-anchor="middle" font-size="12" font-weight="600" fill="#000">HDFS</text>
+    <text x="535" y="598" text-anchor="middle" font-size="9"  fill="#716f6d">Hadoop Distributed FS</text>
+    <text x="535" y="609" text-anchor="middle" font-size="9"  fill="#716f6d">On-prem / hybrid</text>
+    <!-- Arrows storage → core -->
+    <line x1="380" y1="565" x2="440" y2="376" stroke="#aaa8a3" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#cArrow)"/>
+    <line x1="535" y1="565" x2="500" y2="376" stroke="#aaa8a3" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#cArrow)"/>
+
+    <!-- ══ LEGEND ══ -->
+    <rect x="20" y="618" width="900" height="20" rx="4" fill="#f8f7f5" stroke="#d8d5cf"/>
+    <rect x="35"  y="622" width="10" height="10" rx="2" fill="#fff" stroke="#aad1f7"/>
+    <text x="50"  y="632" font-size="9" fill="#0047b3">Open Table Formats</text>
+    <rect x="178" y="622" width="10" height="10" rx="2" fill="#fff" stroke="#b3dfc3"/>
+    <text x="193" y="632" font-size="9" fill="#006625">Cloud / File Catalogs</text>
+    <rect x="325" y="622" width="10" height="10" rx="2" fill="#fff" stroke="#f0dda0"/>
+    <text x="340" y="632" font-size="9" fill="#7a4f00">Databases / Search</text>
+    <rect x="470" y="622" width="10" height="10" rx="2" fill="#fde8eb" stroke="#e10014" stroke-width="1.5"/>
+    <text x="485" y="632" font-size="9" fill="#c40015">New (BigQuery)</text>
+    <rect x="580" y="622" width="10" height="10" rx="2" fill="#fff2cc" stroke="#7a4f00" stroke-dasharray="3,2"/>
+    <text x="595" y="632" font-size="9" fill="#7a4f00">Roadmap (Cloud Spanner)</text>
+    <rect x="705" y="622" width="10" height="10" rx="2" fill="#1d1d1b" stroke="#3a3a38"/>
+    <text x="720" y="632" font-size="9" fill="#000">Internal catalog (default_catalog)</text>
+  </svg>
+
+  <!-- Summary table -->
+  <div class="card mt3">
+    <p class="stitle" style="margin-bottom:12px;">Catalog support matrix</p>
+    <table class="tbl">
+      <thead><tr><th>Catalog</th><th>Type</th><th>Auth / Access</th><th>Format</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>default_catalog</td><td>Internal</td><td>Native</td><td>Ontology DB columnar</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>Hive</td><td>Open Table</td><td>Kerberos / LDAP / HMS</td><td>ORC · Parquet · Avro · CSV · JSON</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>Iceberg</td><td>Open Table</td><td>REST / HMS / AWS Glue</td><td>Parquet · ORC · Avro</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>Hudi</td><td>Open Table</td><td>HMS / S3 / GCS</td><td>Parquet (CoW / MoR)</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>Delta Lake</td><td>Open Table</td><td>S3 / GCS / ADLS</td><td>Parquet + Delta log</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>Paimon</td><td>Open Table</td><td>HMS / S3 / GCS</td><td>Parquet · ORC (LSM)</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>Unified</td><td>HMS-compatible</td><td>Hive Metastore</td><td>Auto-detect: Iceberg / Delta / Hudi / Hive</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>Apache Kudu</td><td>Cloud storage</td><td>Kerberos / TLS</td><td>Kudu columnar</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>File Catalog</td><td>Object storage</td><td>S3 / GCS / ADLS / HDFS</td><td>Parquet · ORC · CSV · JSON · Avro</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>JDBC</td><td>Database</td><td>User/pass · SSL</td><td>MySQL · PostgreSQL · Oracle · SQL Server · ClickHouse</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>Elasticsearch</td><td>Search</td><td>User/pass · API key</td><td>ES index → SQL</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr><td>ODPS (MaxCompute)</td><td>Cloud DB</td><td>Alibaba AccessKey</td><td>ODPS columnar · JNI</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
+        <tr style="background:#fde8eb;"><td>BigQuery</td><td>Cloud DW</td><td>ADC / WIF (GKE)</td><td>Arrow IPC (Storage Read API)</td><td><span class="bdg" style="background:#e10014;color:#fff;"><span class="bdg-dot" style="background:#fff;"></span>NEW · Aug 17</span></td></tr>
+        <tr style="background:#fff2cc;border:1px dashed #7a4f00;"><td>Cloud Spanner</td><td>Cloud DB</td><td>ADC / WIF (GKE)</td><td>Spanner API · gRPC</td><td><span class="bdg" style="background:#fff2cc;color:#7a4f00;border:1px dashed #7a4f00;"><span class="bdg-dot" style="background:#7a4f00;"></span>Roadmap</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SPANNER PANEL
+══════════════════════════════════════ -->
+<div id="spanner" class="panel">
+  <p class="stitle">Cloud Spanner External Catalog — Roadmap</p>
+
+  <div class="cl cl-warn" style="margin-bottom:16px;">
+    <h4>What this will give you</h4>
+    Query data in Cloud Spanner databases directly from Ontology DB SQL — no ETL, no replication.
+    Cloud Spanner&#39;s strong consistency and globally distributed storage make it ideal for real-time network
+    inventory, device state, and topology data. The Spanner connector will use the Spanner API over gRPC
+    with GKE Workload Identity, following the same pattern as the BigQuery catalog.
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;">
+      <span style="font-family:var(--text);font-size:11px;font-weight:700;color:var(--muted);">Enables:</span>
+      <span style="background:#fff2cc;color:#7a4f00;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Spanner Workloads</span>
+      <span style="background:#fff2cc;color:#7a4f00;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Topology Queries</span>
+      <span style="background:#fff2cc;color:#7a4f00;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Impact Assessment</span>
+    </div>
+  </div>
+
+  <div class="itabs">
+    <button class="itab active" onclick="itab(this,'sp-arch')">Architecture</button>
+    <button class="itab" onclick="itab(this,'sp-flow')">Call Flow</button>
+    <button class="itab" onclick="itab(this,'sp-ex')">Examples</button>
+  </div>
+
+  <!-- Architecture tab -->
+  <div id="sp-arch" class="iview active">
+  <svg viewBox="0 0 900 480" style="width:100%;max-height:520px;display:block;font-family:'VZ','Helvetica Neue',Arial,sans-serif;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="spFE"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#dceeff"/><stop offset="100%" stop-color="#c8e4ff"/></linearGradient>
+      <linearGradient id="spBE"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e0f4e8"/><stop offset="100%" stop-color="#c8edd4"/></linearGradient>
+      <linearGradient id="spGCP" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff2cc"/><stop offset="100%" stop-color="#fde8a0"/></linearGradient>
+      <marker id="spB" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#0047b3"/></marker>
+      <marker id="spG" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#006625"/></marker>
+      <marker id="spO" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#7a4f00"/></marker>
+    </defs>
+    <!-- Layer backgrounds -->
+    <rect x="10" y="10"  width="880" height="65"  rx="8" fill="#f8f7f5"    stroke="#d8d5cf"/>
+    <rect x="10" y="85"  width="880" height="175" rx="8" fill="url(#spFE)" stroke="#aad1f7"/>
+    <rect x="10" y="270" width="880" height="110" rx="8" fill="url(#spBE)" stroke="#b3dfc3"/>
+    <rect x="10" y="390" width="880" height="80"  rx="8" fill="url(#spGCP)" stroke="#f0dda0" stroke-dasharray="6,3"/>
+    <!-- Labels -->
+    <text x="24" y="26"  font-size="9" font-weight="700" fill="#aaa8a3" letter-spacing="1">USER / BI TOOL</text>
+    <text x="24" y="100" font-size="9" font-weight="700" fill="#0047b3" letter-spacing="1">ONTOLOGY DB — FRONTEND (FE)</text>
+    <text x="24" y="285" font-size="9" font-weight="700" fill="#006625" letter-spacing="1">ONTOLOGY DB — BACKEND (BE)</text>
+    <text x="24" y="405" font-size="9" font-weight="700" fill="#7a4f00" letter-spacing="1">GOOGLE CLOUD PLATFORM (PLANNED)</text>
+    <!-- User -->
+    <rect x="50"  y="28" width="115" height="38" rx="5" fill="#fff" stroke="#d8d5cf"/>
+    <text x="107" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#000">SQL Client</text>
+    <text x="107" y="58" text-anchor="middle" font-size="9"  fill="#716f6d">MySQL protocol</text>
+    <rect x="185" y="28" width="115" height="38" rx="5" fill="#fff" stroke="#d8d5cf"/>
+    <text x="242" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#000">Application</text>
+    <text x="242" y="58" text-anchor="middle" font-size="9"  fill="#716f6d">JDBC / Python</text>
+    <!-- FE -->
+    <rect x="25"  y="110" width="155" height="48" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="102" y="128" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">SpannerConnector</text>
+    <text x="102" y="142" text-anchor="middle" font-size="9"  fill="#716f6d">SpannerProperties · ADC</text>
+    <text x="102" y="153" text-anchor="middle" font-size="9"  fill="#716f6d">Spanner Java client</text>
+    <rect x="195" y="110" width="185" height="48" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="287" y="128" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">SpannerMetadata</text>
+    <text x="287" y="142" text-anchor="middle" font-size="9"  fill="#716f6d">listDatabases · getTable</text>
+    <text x="287" y="153" text-anchor="middle" font-size="9"  fill="#716f6d">getRemoteFiles → getPartitions</text>
+    <rect x="395" y="110" width="185" height="48" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="487" y="128" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">Optimizer</text>
+    <text x="487" y="142" text-anchor="middle" font-size="9"  fill="#716f6d">SpannerScanImplementationRule</text>
+    <text x="487" y="153" text-anchor="middle" font-size="9"  fill="#716f6d">PushDownPredicate · PruneColumns</text>
+    <rect x="595" y="110" width="175" height="48" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="682" y="128" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">SpannerScanNode</text>
+    <text x="682" y="142" text-anchor="middle" font-size="9"  fill="#716f6d">TScanRangeLocations</text>
+    <text x="682" y="153" text-anchor="middle" font-size="9"  fill="#716f6d">use_spanner_jni_reader=true</text>
+    <!-- FE row2 -->
+    <rect x="195" y="178" width="310" height="38" rx="5" fill="#fff" stroke="#aad1f7"/>
+    <text x="350" y="194" text-anchor="middle" font-size="11" font-weight="600" fill="#0047b3">PlanFragmentBuilder.visitPhysicalSpannerScan()</text>
+    <text x="350" y="208" text-anchor="middle" font-size="9"  fill="#716f6d">plan fragments dispatched to BE nodes</text>
+    <!-- BE -->
+    <rect x="25"  y="288" width="190" height="46" rx="5" fill="#fff" stroke="#b3dfc3"/>
+    <text x="120" y="306" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">HiveConnector / JniScanner</text>
+    <text x="120" y="319" text-anchor="middle" font-size="9"  fill="#716f6d">create_spanner_jni_scanner()</text>
+    <text x="120" y="330" text-anchor="middle" font-size="9"  fill="#716f6d">JniScanner.do_open() / get_next()</text>
+    <rect x="230" y="288" width="200" height="46" rx="5" fill="#fff" stroke="#b3dfc3"/>
+    <text x="330" y="306" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">spanner-reader.jar (JNI)</text>
+    <text x="330" y="319" text-anchor="middle" font-size="9"  fill="#716f6d">SpannerSplitScannerFactory</text>
+    <text x="330" y="330" text-anchor="middle" font-size="9"  fill="#716f6d">SpannerSplitScanner.read()</text>
+    <rect x="445" y="288" width="195" height="46" rx="5" fill="#fff" stroke="#b3dfc3"/>
+    <text x="542" y="306" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">Row / Protobuf Reader</text>
+    <text x="542" y="319" text-anchor="middle" font-size="9"  fill="#716f6d">Spanner rows → ChunkPtr</text>
+    <text x="542" y="330" text-anchor="middle" font-size="9"  fill="#716f6d">Type mapping: INT64/STRING/BYTES</text>
+    <rect x="655" y="288" width="215" height="46" rx="5" fill="#fff" stroke="#b3dfc3"/>
+    <text x="762" y="306" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">BE Execution Pipeline</text>
+    <text x="762" y="319" text-anchor="middle" font-size="9"  fill="#716f6d">Filter · Project · Aggregate</text>
+    <text x="762" y="330" text-anchor="middle" font-size="9"  fill="#716f6d">Result rows → FE → Client</text>
+    <!-- GCP (planned) -->
+    <rect x="25"  y="410" width="200" height="50" rx="5" fill="#fff" stroke="#f0dda0" stroke-dasharray="5,2"/>
+    <text x="125" y="428" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">Spanner API (gRPC)</text>
+    <text x="125" y="441" text-anchor="middle" font-size="9"  fill="#716f6d">Read / ExecuteSql</text>
+    <text x="125" y="452" text-anchor="middle" font-size="9"  fill="#716f6d">spanner.googleapis.com:443</text>
+    <rect x="240" y="410" width="200" height="50" rx="5" fill="#fff" stroke="#f0dda0" stroke-dasharray="5,2"/>
+    <text x="340" y="428" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">Spanner Tables</text>
+    <text x="340" y="441" text-anchor="middle" font-size="9"  fill="#716f6d">Tables · Views</text>
+    <text x="340" y="452" text-anchor="middle" font-size="9"  fill="#716f6d">Strongly consistent reads</text>
+    <rect x="455" y="410" width="200" height="50" rx="5" fill="#fff" stroke="#f0dda0" stroke-dasharray="5,2"/>
+    <text x="555" y="428" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">IAM / Workload Identity</text>
+    <text x="555" y="441" text-anchor="middle" font-size="9"  fill="#716f6d">GKE WIF → SA impersonation</text>
+    <text x="555" y="452" text-anchor="middle" font-size="9"  fill="#716f6d">ADC — same as BigQuery</text>
+    <!-- Arrows -->
+    <line x1="107" y1="66" x2="102" y2="108" stroke="#0047b3" stroke-width="1.5" marker-end="url(#spB)"/>
+    <line x1="242" y1="66" x2="220" y2="108" stroke="#0047b3" stroke-width="1.5" marker-end="url(#spB)"/>
+    <line x1="180" y1="134" x2="193" y2="134" stroke="#0047b3" stroke-width="1.5" marker-end="url(#spB)"/>
+    <line x1="380" y1="134" x2="393" y2="134" stroke="#0047b3" stroke-width="1.5" marker-end="url(#spB)"/>
+    <line x1="580" y1="134" x2="593" y2="134" stroke="#0047b3" stroke-width="1.5" marker-end="url(#spB)"/>
+    <line x1="290" y1="158" x2="310" y2="176" stroke="#0047b3" stroke-width="1.5" marker-end="url(#spB)"/>
+    <line x1="310" y1="216" x2="148" y2="286" stroke="#006625" stroke-width="1.5" stroke-dasharray="5,2" marker-end="url(#spG)"/>
+    <line x1="215" y1="311" x2="228" y2="311" stroke="#006625" stroke-width="1.5" marker-end="url(#spG)"/>
+    <line x1="430" y1="311" x2="443" y2="311" stroke="#006625" stroke-width="1.5" marker-end="url(#spG)"/>
+    <line x1="640" y1="311" x2="653" y2="311" stroke="#006625" stroke-width="1.5" marker-end="url(#spG)"/>
+    <line x1="340" y1="334" x2="340" y2="408" stroke="#7a4f00" stroke-width="2" stroke-dasharray="5,2" marker-end="url(#spO)"/>
+    <text x="347" y="374" font-size="9" fill="#7a4f00">Spanner API (gRPC)</text>
+    <!-- PLANNED watermark -->
+    <text x="450" y="250" text-anchor="middle" font-size="28" font-weight="700" fill="#7a4f00" opacity="0.07" transform="rotate(-20,450,250)">PLANNED</text>
+  </svg>
+  </div><!-- /sp-arch -->
+
+  <!-- Call Flow tab -->
+  <div id="sp-flow" class="iview">
+  <div class="g2">
+    <div class="card">
+      <div class="cl cl-warn" style="margin-top:0">
+        <h4>Phase 1 — Catalog creation &amp; metadata</h4>
+        <code style="background:none;padding:0;color:inherit;font-family:var(--mono);font-size:11px;">CREATE EXTERNAL CATALOG my_spanner PROPERTIES("type"="spanner",...)</code>
+      </div>
+      <div class="flow">
+        <div class="frow"><div class="flabel fl-user">User</div><div class="fsteps">
+          <div class="fstep"><div class="fnum">1</div><div class="fbody">
+            <div class="ft">CREATE EXTERNAL CATALOG</div>
+            <div class="fd">type=spanner · project.id · instance.id · bigquery.auth.type=application_default</div>
+          </div></div>
+        </div></div>
+        <div class="farr">↓</div>
+        <div class="frow"><div class="flabel fl-fe">FE</div><div class="fsteps">
+          <div class="fstep"><div class="fnum">2</div><div class="fbody">
+            <div class="ft">SpannerConnector() initialised</div>
+            <div class="fd">GoogleCredentials.getApplicationDefault() · Spanner Java client</div>
+          </div></div>
+          <div class="fstep"><div class="fnum">3</div><div class="fbody">
+            <div class="ft">SHOW DATABASES → Spanner.listDatabases()</div>
+            <div class="fd">DDL introspection → table schemas → column type mapping</div>
+          </div></div>
+        </div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="cl cl-warn" style="margin-top:0">
+        <h4>Phase 2 — Query execution</h4>
+        <code style="background:none;padding:0;color:inherit;font-family:var(--mono);font-size:11px;">SELECT * FROM my_spanner.mydb.my_table WHERE region='NE'</code>
+      </div>
+      <div class="flow">
+        <div class="frow"><div class="flabel fl-fe">FE</div><div class="fsteps">
+          <div class="fstep"><div class="fnum">4</div><div class="fbody">
+            <div class="ft">SpannerScanImplementationRule</div>
+            <div class="fd">LogicalSpannerScan → PhysicalSpannerScan · predicate pushdown</div>
+          </div></div>
+          <div class="fstep"><div class="fnum">5</div><div class="fbody">
+            <div class="ft">SpannerMetadata.getRemoteFiles()</div>
+            <div class="fd">Partition query → read partitions assigned to BE nodes</div>
+          </div></div>
+        </div></div>
+        <div class="farr">↓</div>
+        <div class="frow"><div class="flabel fl-be">BE</div><div class="fsteps">
+          <div class="fstep"><div class="fnum">6</div><div class="fbody">
+            <div class="ft">spanner-reader.jar → SpannerSplitScanner</div>
+            <div class="fd">Spanner.read() / ExecuteStreamingSql() → rows → ChunkPtr</div>
+          </div></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /sp-flow -->
+
+  <!-- Examples tab -->
+  <div id="sp-ex" class="iview">
+  <div class="ex-grid">
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Create Spanner catalog</div><div class="ex-desc">GKE Workload Identity — same pattern as BigQuery</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">CREATE EXTERNAL CATALOG</span> my_spanner
+<span class="kw">PROPERTIES</span>(
+  <span class="str">"type"</span>                  = <span class="str">"spanner"</span>,
+  <span class="str">"spanner.project.id"</span>    = <span class="str">"vz-it-np-jpuv-dev-anpdo-0"</span>,
+  <span class="str">"spanner.instance.id"</span>   = <span class="str">"spanner-instance"</span>,
+  <span class="str">"spanner.auth.type"</span>     = <span class="str">"application_default"</span>
+);</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Browse databases &amp; tables</div><div class="ex-desc">Schema from Spanner DDL introspection</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">SET CATALOG</span> my_spanner;
+<span class="kw">SHOW DATABASES</span>;               <span class="cmt">-- Spanner databases</span>
+<span class="kw">USE</span> mydb;
+<span class="kw">SHOW TABLES</span>;
+<span class="kw">DESCRIBE</span> my_table;        <span class="cmt">-- columns from DDL</span></div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Query network topology</div><div class="ex-desc">Filter pushed to Spanner partition scan</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">SELECT</span> record_id, region, state, last_seen
+<span class="kw">FROM</span>   my_spanner.mydb.my_table
+<span class="kw">WHERE</span>  region = <span class="str">'NE'</span>
+  <span class="kw">AND</span>  state  = <span class="str">'DOWN'</span>
+<span class="kw">ORDER BY</span> last_seen <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>  50;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Cross-catalog JOIN — Spanner + BigQuery</div><div class="ex-desc">Join Spanner tables with BigQuery datasets</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="cmt">-- Impact assessment: alarms on DOWN devices</span>
+<span class="kw">SELECT</span> d.record_id, d.region,
+       <span class="fn">COUNT</span>(a.alarm_id) AS open_alarms
+<span class="kw">FROM</span>   my_spanner.mydb.my_table d
+<span class="kw">JOIN</span>   bq_np.apollo_alarms.active_alarms a
+       <span class="kw">ON</span> d.record_id = a.component_id
+<span class="kw">WHERE</span>  d.state = <span class="str">'DOWN'</span>
+<span class="kw">GROUP BY</span> d.record_id, d.region
+<span class="kw">ORDER BY</span> open_alarms <span class="kw">DESC</span>;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">MV over Spanner for sub-ms dashboards</div><div class="ex-desc">Cache network state in Ontology DB</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="kw">CREATE MATERIALIZED VIEW</span> mv_spanner_summary
+<span class="kw">DISTRIBUTED BY HASH</span>(region) <span class="kw">BUCKETS</span> 8
+<span class="kw">REFRESH ASYNC EVERY</span> (<span class="kw">INTERVAL</span> 5 <span class="kw">MINUTE</span>)
+<span class="kw">AS</span>
+<span class="kw">SELECT</span> region,
+       <span class="fn">COUNT_IF</span>(state=<span class="str">'DOWN'</span>)  AS count_type_a,
+       <span class="fn">COUNT_IF</span>(state=<span class="str">'UP'</span>)    AS count_type_b,
+       <span class="fn">COUNT</span>(*)               AS total
+<span class="kw">FROM</span>   my_spanner.mydb.my_table
+<span class="kw">GROUP BY</span> region;</div></div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-hdr"><div><div class="ex-title">Strong-consistency point lookup</div><div class="ex-desc">Read latest committed state for a single device</div></div><button class="copy-btn" onclick="cp(this)">Copy</button></div>
+      <div class="ex-body"><div class="sql"><span class="cmt">-- Single-row strong read (no stale replica)</span>
+<span class="kw">SELECT</span> *
+<span class="kw">FROM</span>   my_spanner.mydb.my_table
+<span class="kw">WHERE</span>  record_id = <span class="str">'GNBQNC15T1A-P-CN-0248-01'</span>;
+
+<span class="cmt">-- Stale read for analytics (lower latency)</span>
+<span class="kw">SET</span> spanner_read_staleness = <span class="str">'15s'</span>;
+<span class="kw">SELECT</span> region, <span class="fn">COUNT</span>(*) <span class="kw">FROM</span>
+  my_spanner.mydb.my_table
+<span class="kw">GROUP BY</span> region;</div></div>
+    </div>
+  </div>
+  </div><!-- /sp-ex -->
+
+</div>
+<!-- ══════ end spanner panel ══════ -->
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+function go(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sb-link').forEach(l => l.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(el) el.classList.add('active');
+}
+
+function itab(btn, viewId) {
+  const panel = btn.closest('.panel');
+  panel.querySelectorAll('.itab').forEach(t => t.classList.remove('active'));
+  panel.querySelectorAll('.iview').forEach(v => v.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(viewId).classList.add('active');
+}
+
+function cp(btn) {
+  const sql = btn.closest('.ex-card').querySelector('.sql').innerText;
+  navigator.clipboard.writeText(sql).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+</script>
+</body>
+</html>

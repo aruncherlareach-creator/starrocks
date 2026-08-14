@@ -71,6 +71,7 @@ import com.starrocks.sql.optimizer.operator.UKFKConstraints;
 import com.starrocks.sql.optimizer.operator.logical.LogicalAggregationOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalAssertOneRowOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.logical.LogicalSpannerScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalCTEAnchorOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalCTEConsumeOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalCTEProduceOperator;
@@ -110,6 +111,7 @@ import com.starrocks.sql.optimizer.operator.logical.LogicalViewScanOperator;
 import com.starrocks.sql.optimizer.operator.logical.LogicalWindowOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalAssertOneRowOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalBigQueryScanOperator;
+import com.starrocks.sql.optimizer.operator.physical.PhysicalSpannerScanOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalCTEAnchorOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalCTEConsumeOperator;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalCTEProduceOperator;
@@ -789,6 +791,17 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
         return visitOperator(node, context);
     }
 
+    private Void computeSpannerScanNode(Operator node, ExpressionContext context, Table table,
+                                         Map<ColumnRefOperator, Column> columnRefOperatorColumnMap) {
+        if (context.getStatistics() == null) {
+            String catalogName = table.getCatalogName();
+            Statistics stats = GlobalStateMgr.getCurrentState().getMetadataMgr().getTableStatistics(
+                    optimizerContext, catalogName, table, columnRefOperatorColumnMap, null, node.getPredicate());
+            context.setStatistics(stats);
+        }
+        return visitOperator(node, context);
+    }
+
     private Void computeOdpsScanNode(Operator node, ExpressionContext context, Table table,
                                      Map<ColumnRefOperator, Column> columnRefOperatorColumnMap) {
         if (context.getStatistics() == null) {
@@ -808,6 +821,11 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
     @Override
     public Void visitPhysicalBigQueryScan(PhysicalBigQueryScanOperator node, ExpressionContext context) {
         return computeBigQueryScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
+    }
+
+    @Override
+    public Void visitPhysicalSpannerScan(PhysicalSpannerScanOperator node, ExpressionContext context) {
+        return computeSpannerScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
     }
 
     public Void visitPhysicalKuduScan(PhysicalKuduScanOperator node, ExpressionContext context) {
@@ -1664,6 +1682,11 @@ public class StatisticsCalculator extends OperatorVisitor<Void, ExpressionContex
     @Override
     public Void visitLogicalBigQueryScan(LogicalBigQueryScanOperator node, ExpressionContext context) {
         return computeBigQueryScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
+    }
+
+    @Override
+    public Void visitLogicalSpannerScan(LogicalSpannerScanOperator node, ExpressionContext context) {
+        return computeSpannerScanNode(node, context, node.getTable(), node.getColRefToColumnMetaMap());
     }
 
     public Void visitLogicalIntersect(LogicalIntersectOperator node, ExpressionContext context) {
