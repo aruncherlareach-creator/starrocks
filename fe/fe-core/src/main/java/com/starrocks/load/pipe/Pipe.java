@@ -180,8 +180,10 @@ public class Pipe implements GsonPostProcessable {
                 }
                 case PipeAnalyzer.PROPERTY_MAX_ERROR_COUNT: {
                     int v = Integer.parseInt(value);
-                    if (v < 0) throw new IllegalArgumentException(
-                            PipeAnalyzer.PROPERTY_MAX_ERROR_COUNT + " must be non-negative");
+                    if (v < 0) {
+                        throw new IllegalArgumentException(
+                                PipeAnalyzer.PROPERTY_MAX_ERROR_COUNT + " must be non-negative");
+                    }
                     break;
                 }
                 case PropertyAnalyzer.PROPERTIES_WAREHOUSE: {

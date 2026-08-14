@@ -160,7 +160,10 @@ public class PipeAnalyzer {
                 }
                 case PROPERTY_MAX_ERROR_COUNT: {
                     int v = -1;
-                    try { v = Integer.parseInt(valueStr); } catch (NumberFormatException ignored) {}
+                    try {
+                        v = Integer.parseInt(valueStr);
+                    } catch (NumberFormatException ignored) {
+                    }
                     if (v < 0) {
                         ErrorReport.reportSemanticException(ErrorCode.ERR_INVALID_PARAMETER,
                                 PROPERTY_MAX_ERROR_COUNT + " must be a non-negative integer");
