@@ -63,6 +63,8 @@ public class PipeAnalyzer {
     public static final String PROPERTY_BATCH_FILES = "batch_files";
     /** When true, files that fail to load are marked SKIPPED and the pipe continues. */
     public static final String PROPERTY_SKIP_ERROR_FILES = "skip_error_files";
+    /** Max number of failed tasks before the pipe enters ERROR state (default: 5). */
+    public static final String PROPERTY_MAX_ERROR_COUNT = "max_error_count";
 
     public static final ImmutableSet<String> SUPPORTED_PROPERTIES =
             new ImmutableSortedSet.Builder<String>(String.CASE_INSENSITIVE_ORDER)
@@ -71,6 +73,7 @@ public class PipeAnalyzer {
                     .add(PROPERTY_BATCH_SIZE)
                     .add(PROPERTY_BATCH_FILES)
                     .add(PROPERTY_SKIP_ERROR_FILES)
+                    .add(PROPERTY_MAX_ERROR_COUNT)
                     .add(PropertyAnalyzer.PROPERTIES_WAREHOUSE)
                     .build();
 
@@ -153,6 +156,15 @@ public class PipeAnalyzer {
                 }
                 case PROPERTY_SKIP_ERROR_FILES: {
                     ParseUtil.parseBooleanValue(valueStr, PROPERTY_SKIP_ERROR_FILES);
+                    break;
+                }
+                case PROPERTY_MAX_ERROR_COUNT: {
+                    int v = -1;
+                    try { v = Integer.parseInt(valueStr); } catch (NumberFormatException ignored) {}
+                    if (v < 0) {
+                        ErrorReport.reportSemanticException(ErrorCode.ERR_INVALID_PARAMETER,
+                                PROPERTY_MAX_ERROR_COUNT + " must be a non-negative integer");
+                    }
                     break;
                 }
                 case PropertyAnalyzer.PROPERTIES_WAREHOUSE: {

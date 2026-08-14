@@ -111,6 +111,7 @@ public class Pipe implements GsonPostProcessable {
     private ErrorInfo lastErrorInfo = new ErrorInfo();
     private int failedTaskExecutionCount = 0;
     private boolean skipErrorFiles = false;
+    private int maxErrorCount = FAILED_TASK_THRESHOLD;
     private int pollIntervalSecond = Config.pipe_default_poll_interval_s;
     private long lastPolledTime = 0;
     private boolean recovered = false;
@@ -177,6 +178,12 @@ public class Pipe implements GsonPostProcessable {
                     ParseUtil.parseBooleanValue(value, PipeAnalyzer.PROPERTY_SKIP_ERROR_FILES);
                     break;
                 }
+                case PipeAnalyzer.PROPERTY_MAX_ERROR_COUNT: {
+                    int v = Integer.parseInt(value);
+                    if (v < 0) throw new IllegalArgumentException(
+                            PipeAnalyzer.PROPERTY_MAX_ERROR_COUNT + " must be non-negative");
+                    break;
+                }
                 case PropertyAnalyzer.PROPERTIES_WAREHOUSE: {
                     // warehouse property is validated in PipeAnalyzer.analyzeWarehouseProperty
                     // Just check that value is not empty
@@ -218,6 +225,10 @@ public class Pipe implements GsonPostProcessable {
                 }
                 case PipeAnalyzer.PROPERTY_SKIP_ERROR_FILES: {
                     this.skipErrorFiles = ParseUtil.parseBooleanValue(value, PipeAnalyzer.PROPERTY_SKIP_ERROR_FILES);
+                    break;
+                }
+                case PipeAnalyzer.PROPERTY_MAX_ERROR_COUNT: {
+                    this.maxErrorCount = Integer.parseInt(value);
                     break;
                 }
                 case PropertyAnalyzer.PROPERTIES_WAREHOUSE: {
@@ -376,7 +387,7 @@ public class Pipe implements GsonPostProcessable {
             String sqlTask = FilePipeSource.buildInsertSql(this, piece, uniqueName);
             PipeTaskDesc taskDesc = new PipeTaskDesc(taskId, uniqueName, dbName, sqlTask, piece);
             taskDesc.getVariables().putAll(taskExecutionVariables);
-            taskDesc.setErrorLimit(FAILED_TASK_THRESHOLD);
+            taskDesc.setErrorLimit(maxErrorCount);
 
             // Persist the loading state
             fileSource.getFileListRepo()
@@ -427,7 +438,7 @@ public class Pipe implements GsonPostProcessable {
                 }
                 if (task.isError() && !skipErrorFiles) {
                     failedTaskExecutionCount++;
-                    if (failedTaskExecutionCount > FAILED_TASK_THRESHOLD) {
+                    if (failedTaskExecutionCount > maxErrorCount) {
                         changeStateAction = () -> changeState(State.ERROR, false);
                     }
                 }
