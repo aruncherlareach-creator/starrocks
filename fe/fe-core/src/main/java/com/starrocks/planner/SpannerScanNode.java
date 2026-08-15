@@ -4,7 +4,6 @@ package com.starrocks.planner;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
-import com.starrocks.analysis.TupleDescriptor;
 import com.starrocks.catalog.PartitionKey;
 import com.starrocks.catalog.SpannerTable;
 import com.starrocks.connector.CatalogConnector;

@@ -8,7 +8,7 @@
 
 package com.starrocks.connector.spanner;
 
-import com.google.spanner.admin.database.v1.StructType;
+import com.google.spanner.v1.StructType;
 import com.google.spanner.v1.Type;
 import com.google.spanner.v1.TypeCode;
 import com.starrocks.catalog.Column;
