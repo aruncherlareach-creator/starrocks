@@ -31,13 +31,13 @@ import com.starrocks.catalog.Table;
 import com.starrocks.common.tvr.TvrVersionRange;
 import com.starrocks.connector.ConnectorMetadata;
 import com.starrocks.connector.ConnectorTableId;
-import com.starrocks.credential.CloudConfiguration;
-import com.starrocks.credential.gcp.GCPCloudConfiguration;
-import com.starrocks.credential.gcp.GCPCloudCredential;
 import com.starrocks.connector.GetRemoteFilesParams;
 import com.starrocks.connector.RemoteFileDesc;
 import com.starrocks.connector.RemoteFileInfo;
 import com.starrocks.connector.exception.StarRocksConnectorException;
+import com.starrocks.credential.CloudConfiguration;
+import com.starrocks.credential.gcp.GCPCloudConfiguration;
+import com.starrocks.credential.gcp.GCPCloudCredential;
 import com.starrocks.qe.ConnectContext;
 import com.starrocks.sql.optimizer.OptimizerContext;
 import com.starrocks.sql.optimizer.operator.scalar.ColumnRefOperator;
@@ -341,7 +341,8 @@ public class SpannerMetadata implements ConnectorMetadata {
             case "TIMESTAMP": return com.starrocks.type.DateType.DATETIME;
             case "BYTES":     return com.starrocks.type.VarbinaryType.VARBINARY;
             case "JSON":
-            case "PG_JSONB":  return com.starrocks.type.TypeDescriptor.createJsonType();
+            case "PG_JSONB":
+                return com.starrocks.type.TypeDescriptor.createJsonType();
             case "STRING":
             default:
                 return com.starrocks.type.TypeFactory.createDefaultCatalogString();
