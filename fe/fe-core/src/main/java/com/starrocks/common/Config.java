@@ -4680,8 +4680,9 @@ public class Config extends ConfigBase {
     public static boolean enable_desensitize_query_dump = false;
 
     @ConfField(mutable = true, comment = "The threshold to flatten compound predicate from deep tree to a balanced tree to " +
-            "avoid stack over flow")
-    public static int compound_predicate_flatten_threshold = 512;
+            "avoid stack over flow. Must be kept well below thrift_max_recursion_depth (default 64): a balanced " +
+            "tree of depth 32 handles up to 2^32 operands safely within the Thrift recursion limit.")
+    public static int compound_predicate_flatten_threshold = 32;
 
     @ConfField public static int ui_queries_sql_statement_max_length = 128;
 
