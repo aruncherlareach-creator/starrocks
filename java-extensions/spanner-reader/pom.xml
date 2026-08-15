@@ -13,7 +13,7 @@
 
     <properties>
         <java-extensions.home>${basedir}/../</java-extensions.home>
-        <spanner.version>6.120.0</spanner.version>
+        <spanner.version>6.118.0</spanner.version>
     </properties>
 
     <dependencies>
