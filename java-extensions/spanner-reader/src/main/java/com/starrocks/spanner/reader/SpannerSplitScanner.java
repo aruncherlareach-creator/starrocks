@@ -16,7 +16,7 @@ package com.starrocks.spanner.reader;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.spanner.v1.SpannerGrpc;
+import com.google.spanner.v1.SpannerGrpc;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ListValue;
 import com.google.protobuf.Value;

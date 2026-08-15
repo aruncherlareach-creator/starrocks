@@ -9,33 +9,33 @@
 package com.starrocks.connector.spanner;
 
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.spanner.BatchClient;
+import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.DatabaseInfo;
-import com.google.cloud.spanner.InstanceId;
-import com.google.cloud.spanner.ResultSet;
-import com.google.cloud.spanner.Spanner;
-import com.google.cloud.spanner.Statement;
-import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.TimestampBound;
+import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Partition;
 import com.google.cloud.spanner.PartitionOptions;
-import com.google.cloud.spanner.ReadOnlyTransaction;
-import com.google.cloud.spanner.BatchReadOnlyTransaction;
-import com.google.cloud.spanner.BatchClient;
-import com.google.cloud.spanner.KeySet;
-import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.spanner.Type;
+import com.google.cloud.spanner.Statement;
+import com.google.cloud.spanner.TimestampBound;
 import com.starrocks.catalog.Column;
+import com.starrocks.catalog.Database;
 import com.starrocks.catalog.PartitionKey;
-import com.starrocks.catalog.Table;
 import com.starrocks.catalog.SpannerTable;
+import com.starrocks.catalog.Table;
+import com.starrocks.common.tvr.TvrVersionRange;
 import com.starrocks.connector.ConnectorMetadata;
+import com.starrocks.connector.ConnectorTableId;
 import com.starrocks.connector.GetRemoteFilesParams;
 import com.starrocks.connector.RemoteFileDesc;
 import com.starrocks.connector.RemoteFileInfo;
 import com.starrocks.connector.exception.StarRocksConnectorException;
+import com.starrocks.qe.ConnectContext;
 import com.starrocks.sql.optimizer.OptimizerContext;
 import com.starrocks.sql.optimizer.operator.scalar.ColumnRefOperator;
 import com.starrocks.sql.optimizer.operator.scalar.ScalarOperator;
@@ -46,10 +46,10 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class SpannerMetadata implements ConnectorMetadata {
@@ -72,10 +72,15 @@ public class SpannerMetadata implements ConnectorMetadata {
         this.instanceId  = properties.get(SpannerProperties.INSTANCE_ID);
     }
 
+    @Override
+    public Table.TableType getTableType() {
+        return Table.TableType.SPANNER;
+    }
+
     // ── Database listing ────────────────────────────────────────────────────────
 
     @Override
-    public List<String> listDbNames(String catalogName) {
+    public List<String> listDbNames(ConnectContext context) {
         DatabaseAdminClient adminClient = spanner.getDatabaseAdminClient();
         List<String> names = new ArrayList<>();
         for (DatabaseInfo db : adminClient.listDatabases(instanceId).iterateAll()) {
@@ -86,10 +91,15 @@ public class SpannerMetadata implements ConnectorMetadata {
         return names;
     }
 
+    @Override
+    public Database getDb(ConnectContext context, String name) {
+        return new Database(ConnectorTableId.CONNECTOR_ID_GENERATOR.getNextId().asLong(), name);
+    }
+
     // ── Table listing ────────────────────────────────────────────────────────────
 
     @Override
-    public List<String> listTableNames(String catalogName, String dbName) {
+    public List<String> listTableNames(ConnectContext context, String dbName) {
         DatabaseClient dbClient = spanner.getDatabaseClient(
                 DatabaseId.of(projectId, instanceId, dbName));
         List<String> tables = new ArrayList<>();
@@ -106,7 +116,7 @@ public class SpannerMetadata implements ConnectorMetadata {
     // ── Table / schema ─────────────────────────────────────────────────────────
 
     @Override
-    public Table getTable(String catalogName, String dbName, String tblName) {
+    public Table getTable(ConnectContext context, String dbName, String tblName) {
         DatabaseClient dbClient = spanner.getDatabaseClient(
                 DatabaseId.of(projectId, instanceId, dbName));
 
@@ -227,11 +237,13 @@ public class SpannerMetadata implements ConnectorMetadata {
     // ── Statistics ─────────────────────────────────────────────────────────────
 
     @Override
-    public Statistics getTableStatistics(OptimizerContext session, String catalogName,
-                                          Table table, List<ColumnRefOperator> columns,
-                                          Map<ColumnRefOperator, Column> columnMetaMap,
+    public Statistics getTableStatistics(OptimizerContext session,
+                                          Table table,
+                                          Map<ColumnRefOperator, Column> columns,
                                           List<PartitionKey> partitionKeys,
-                                          ScalarOperator predicate) {
+                                          ScalarOperator predicate,
+                                          long limit,
+                                          TvrVersionRange tableVersionRange) {
         SpannerTable spannerTable = (SpannerTable) table;
         DatabaseClient dbClient = spanner.getDatabaseClient(
                 DatabaseId.of(projectId, instanceId, spannerTable.getCatalogDBName()));
@@ -251,7 +263,7 @@ public class SpannerMetadata implements ConnectorMetadata {
 
         Statistics.Builder builder = Statistics.builder().setOutputRowCount(rowCount);
         final double finalRowCount = rowCount;
-        for (Map.Entry<ColumnRefOperator, Column> entry : columnMetaMap.entrySet()) {
+        for (Map.Entry<ColumnRefOperator, Column> entry : columns.entrySet()) {
             double ndv = Math.min(finalRowCount, Math.max(1.0, finalRowCount * 0.1));
             builder.addColumnStatistic(entry.getKey(), ColumnStatistic.builder()
                     .setDistinctValuesCount(ndv)
