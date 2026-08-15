@@ -22,14 +22,26 @@ public class SpannerTableName {
         this.tableId    = tableId;
     }
 
-    public String getInstanceId()  { return instanceId; }
-    public String getDatabaseId()  { return databaseId; }
-    public String getTableId()     { return tableId; }
+    public String getInstanceId() {
+        return instanceId;
+    }
+
+    public String getDatabaseId() {
+        return databaseId;
+    }
+
+    public String getTableId() {
+        return tableId;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof SpannerTableName)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof SpannerTableName)) {
+            return false;
+        }
         SpannerTableName that = (SpannerTableName) o;
         return Objects.equals(instanceId, that.instanceId)
                 && Objects.equals(databaseId, that.databaseId)

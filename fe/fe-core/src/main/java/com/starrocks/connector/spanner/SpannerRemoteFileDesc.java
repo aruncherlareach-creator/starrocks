@@ -35,8 +35,19 @@ public class SpannerRemoteFileDesc extends RemoteFileDesc {
         return new SpannerRemoteFileDesc(sessionName, transactionId, partitionToken, partitionIndex);
     }
 
-    public String getSessionName()    { return sessionName; }
-    public String getTransactionId()  { return transactionId; }
-    public String getPartitionToken() { return partitionToken; }
-    public int    getPartitionIndex() { return partitionIndex; }
+    public String getSessionName() {
+        return sessionName;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public String getPartitionToken() {
+        return partitionToken;
+    }
+
+    public int getPartitionIndex() {
+        return partitionIndex;
+    }
 }

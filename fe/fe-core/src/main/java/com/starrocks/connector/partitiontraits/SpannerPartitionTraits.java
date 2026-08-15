@@ -14,8 +14,8 @@
 
 package com.starrocks.connector.partitiontraits;
 
-import com.starrocks.catalog.SpannerPartitionKey;
 import com.starrocks.catalog.PartitionKey;
+import com.starrocks.catalog.SpannerPartitionKey;
 
 /**
  * Partition traits for Spanner external catalog tables.

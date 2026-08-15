@@ -14,8 +14,6 @@
 
 package com.starrocks.sql.optimizer;
 
-import com.starrocks.sql.optimizer.operator.physical.PhysicalSpannerScanOperator;
-
 /**
  * OptExpressionVisitor is used to visit operator tree by OptExpression
  * The visitX function can ensure that the root operator of the optExpression must be X.

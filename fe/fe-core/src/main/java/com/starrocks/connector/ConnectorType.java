@@ -15,7 +15,6 @@
 package com.starrocks.connector;
 
 import com.starrocks.connector.bigquery.BigQueryConnector;
-import com.starrocks.connector.spanner.SpannerConnector;
 import com.starrocks.connector.config.ConnectorConfig;
 import com.starrocks.connector.delta.DeltaLakeConnector;
 import com.starrocks.connector.elasticsearch.ElasticsearchConnector;
@@ -27,6 +26,7 @@ import com.starrocks.connector.jdbc.JDBCConnector;
 import com.starrocks.connector.kudu.KuduConnector;
 import com.starrocks.connector.odps.OdpsConnector;
 import com.starrocks.connector.paimon.PaimonConnector;
+import com.starrocks.connector.spanner.SpannerConnector;
 import com.starrocks.connector.unified.UnifiedConnector;
 import org.apache.commons.lang3.EnumUtils;
 

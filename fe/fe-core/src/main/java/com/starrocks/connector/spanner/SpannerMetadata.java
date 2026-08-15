@@ -49,7 +49,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -169,8 +168,12 @@ public class SpannerMetadata implements ConnectorMetadata {
         long partitionSizeBytes  = properties.getLong(SpannerProperties.PARTITION_SIZE_BYTES);
 
         PartitionOptions.Builder poBuilder = PartitionOptions.newBuilder();
-        if (maxPartitions > 0)      poBuilder.setMaxPartitions(maxPartitions);
-        if (partitionSizeBytes > 0) poBuilder.setPartitionSizeBytes(partitionSizeBytes);
+        if (maxPartitions > 0) {
+            poBuilder.setMaxPartitions(maxPartitions);
+        }
+        if (partitionSizeBytes > 0) {
+            poBuilder.setPartitionSizeBytes(partitionSizeBytes);
+        }
 
         BatchReadOnlyTransaction txn = batchClient.batchReadOnlyTransaction(
                 TimestampBound.strong());
@@ -314,7 +317,9 @@ public class SpannerMetadata implements ConnectorMetadata {
      * into a StarRocks Type.
      */
     private com.starrocks.type.Type parseSpannerDdlType(String ddlType) {
-        if (ddlType == null) return com.starrocks.type.TypeFactory.createDefaultCatalogString();
+        if (ddlType == null) {
+            return com.starrocks.type.TypeFactory.createDefaultCatalogString();
+        }
         String t = ddlType.trim().toUpperCase();
 
         if (t.startsWith("ARRAY<")) {

@@ -26,7 +26,6 @@ import static com.starrocks.type.FloatType.DOUBLE;
 import static com.starrocks.type.FloatType.FLOAT;
 import static com.starrocks.type.IntegerType.BIGINT;
 import static com.starrocks.type.TypeFactory.createDefaultCatalogString;
-import static com.starrocks.type.TypeFactory.createVarbinaryType;
 import static com.starrocks.type.VarbinaryType.VARBINARY;
 
 /**
