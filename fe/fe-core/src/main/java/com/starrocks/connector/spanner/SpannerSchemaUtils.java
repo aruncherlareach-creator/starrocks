@@ -23,6 +23,7 @@ import static com.starrocks.type.BooleanType.BOOLEAN;
 import static com.starrocks.type.DateType.DATE;
 import static com.starrocks.type.DateType.DATETIME;
 import static com.starrocks.type.FloatType.DOUBLE;
+import static com.starrocks.type.FloatType.FLOAT;
 import static com.starrocks.type.IntegerType.BIGINT;
 import static com.starrocks.type.TypeFactory.createDefaultCatalogString;
 import static com.starrocks.type.TypeFactory.createVarbinaryType;
@@ -52,8 +53,8 @@ public class SpannerSchemaUtils {
 
     /**
      * Convert a Spanner Type to a StarRocks Type.
-     * Spanner type codes: BOOL, INT64, FLOAT64, STRING, BYTES, DATE, TIMESTAMP,
-     * JSON, ARRAY, STRUCT, NUMERIC, PG_NUMERIC, PG_JSONB.
+     * Spanner type codes: BOOL, INT64, FLOAT32, FLOAT64, STRING, BYTES, DATE, TIMESTAMP,
+     * JSON, ARRAY, STRUCT, NUMERIC, PG_NUMERIC, PG_JSONB, PROTO, ENUM, INTERVAL, UUID.
      */
     public static com.starrocks.type.Type spannerTypeToStarRocks(Type spannerType) {
         TypeCode code = spannerType.getCode();
@@ -62,6 +63,8 @@ public class SpannerSchemaUtils {
                 return BOOLEAN;
             case INT64:
                 return BIGINT;
+            case FLOAT32:
+                return FLOAT;
             case FLOAT64:
                 return DOUBLE;
             case NUMERIC:
@@ -87,6 +90,14 @@ public class SpannerSchemaUtils {
             case STRUCT:
                 // Represent STRUCT as JSON — full nested struct mapping is future work
                 return com.starrocks.type.TypeDescriptor.createJsonType();
+            case PROTO:
+            case ENUM:
+                // Spanner PROTO/ENUM: represent as VARCHAR (proto bytes/enum name as string)
+                return createDefaultCatalogString();
+            case INTERVAL:
+            case UUID:
+                // Spanner INTERVAL/UUID: represent as VARCHAR
+                return createDefaultCatalogString();
             default:
                 LOG.warn("Unknown Spanner type '{}'; mapping to VARCHAR.", code);
                 return createDefaultCatalogString();

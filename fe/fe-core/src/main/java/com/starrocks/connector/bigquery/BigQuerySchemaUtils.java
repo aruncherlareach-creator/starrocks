@@ -77,10 +77,13 @@ public class BigQuerySchemaUtils {
             case NUMERIC:
                 return TypeFactory.createUnifiedDecimalType(38, 9);
             case BIGNUMERIC: {
-                // BigQuery BIGNUMERIC has 76 digits of precision; StarRocks DECIMAL caps at 38.
+                // BigQuery BIGNUMERIC: up to 38 integer + 38 fractional digits (76 total).
+                // StarRocks DECIMAL caps at precision 38, so we cap at DECIMAL(38,9) matching
+                // NUMERIC. Values with > 29 integer digits or > 9 fractional digits lose precision.
                 LOG.warn("BIGNUMERIC field '{}' exceeds StarRocks max DECIMAL precision (38). " +
-                        "Values may lose precision.", field.getName());
-                return TypeFactory.createUnifiedDecimalType(38, 38);
+                        "Integer digits > 29 or fractional digits > 9 will lose precision.",
+                        field.getName());
+                return TypeFactory.createUnifiedDecimalType(38, 9);
             }
             case BOOL:
                 return BOOLEAN;

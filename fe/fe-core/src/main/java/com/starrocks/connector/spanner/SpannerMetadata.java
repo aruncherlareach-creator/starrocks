@@ -174,6 +174,11 @@ public class SpannerMetadata implements ConnectorMetadata {
 
         BatchReadOnlyTransaction txn = batchClient.batchReadOnlyTransaction(
                 TimestampBound.strong());
+        // NOTE: This read-only transaction must remain open while the BE executes all partitions.
+        // Spanner read-only transactions expire after ~1 hour. Queries scanning large tables
+        // that take longer than 1 hour will fail mid-execution with a FAILED_PRECONDITION error.
+        // The access token serialised into spanner_split_infos also expires (typically 1 hour).
+        LOG.info("Spanner batch transaction opened for {}/{}", databaseId, tblName);
 
         String sessionName   = txn.getBatchTransactionId().getSessionId();
         String transactionId;
@@ -322,6 +327,7 @@ public class SpannerMetadata implements ConnectorMetadata {
         switch (base) {
             case "BOOL":      return com.starrocks.type.BooleanType.BOOLEAN;
             case "INT64":     return com.starrocks.type.IntegerType.BIGINT;
+            case "FLOAT32":   return com.starrocks.type.FloatType.FLOAT;
             case "FLOAT64":   return com.starrocks.type.FloatType.DOUBLE;
             case "NUMERIC":
             case "PG_NUMERIC":

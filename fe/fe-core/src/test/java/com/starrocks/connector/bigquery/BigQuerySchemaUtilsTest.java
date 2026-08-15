@@ -101,6 +101,19 @@ public class BigQuerySchemaUtilsTest {
     }
 
     @Test
+    public void testBignumericMapsToDecimalWithCorrectScale() {
+        // BIGNUMERIC has up to 38 integer + 38 fractional digits; we cap at DECIMAL(38,9)
+        // The old bug mapped it to DECIMAL(38,38) which means max value ~0.999... (wrong)
+        Schema schema = Schema.of(field("big", StandardSQLTypeName.BIGNUMERIC));
+        List<Column> cols = BigQuerySchemaUtils.toStarRocksColumns(schema);
+        Type t = cols.get(0).getType();
+        Assertions.assertTrue(t.isDecimalV3());
+        ScalarType st = (ScalarType) t;
+        Assertions.assertEquals(38, st.getPrecision());
+        Assertions.assertEquals(9, st.getScalarScale()); // must NOT be 38
+    }
+
+    @Test
     public void testRepeatedFieldMapsToArray() {
         Schema schema = Schema.of(repeatedField("tags", StandardSQLTypeName.STRING));
         List<Column> cols = BigQuerySchemaUtils.toStarRocksColumns(schema);
