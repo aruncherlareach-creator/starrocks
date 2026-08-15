@@ -139,5 +139,12 @@ public class BigQueryConnector implements Connector {
         } catch (Exception e) {
             LOG.warn("Error closing BigQuery read client for catalog '{}'", catalogName, e);
         }
+        try {
+            if (bigQuery != null) {
+                bigQuery.close();
+            }
+        } catch (Exception e) {
+            LOG.warn("Error closing BigQuery client for catalog '{}'", catalogName, e);
+        }
     }
 }

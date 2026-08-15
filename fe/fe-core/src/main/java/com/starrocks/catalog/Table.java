@@ -169,6 +169,7 @@ public class Table extends MetaObject implements Writable, GsonPostProcessable, 
                     .add(TableType.DELTALAKE)
                     .add(TableType.PAIMON)
                     .add(TableType.BIGQUERY)
+                    .add(TableType.SPANNER)
                     .build();
 
     @SerializedName(value = "id")

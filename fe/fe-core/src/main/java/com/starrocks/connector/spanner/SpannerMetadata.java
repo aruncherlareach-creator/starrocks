@@ -31,6 +31,9 @@ import com.starrocks.catalog.Table;
 import com.starrocks.common.tvr.TvrVersionRange;
 import com.starrocks.connector.ConnectorMetadata;
 import com.starrocks.connector.ConnectorTableId;
+import com.starrocks.credential.CloudConfiguration;
+import com.starrocks.credential.gcp.GCPCloudConfiguration;
+import com.starrocks.credential.gcp.GCPCloudCredential;
 import com.starrocks.connector.GetRemoteFilesParams;
 import com.starrocks.connector.RemoteFileDesc;
 import com.starrocks.connector.RemoteFileInfo;
@@ -273,6 +276,20 @@ public class SpannerMetadata implements ConnectorMetadata {
                     .build());
         }
         return builder.build();
+    }
+
+    // ── CloudConfiguration ─────────────────────────────────────────────────────
+
+    @Override
+    public CloudConfiguration getCloudConfiguration() {
+        // The actual Spanner auth is handled by the JNI scanner using the access token
+        // serialised in spanner_split_infos. Return a minimal GCP cloud configuration
+        // so SpannerScanNode.toThrift() can call cloudConfiguration.toThrift().
+        GCPCloudCredential gcpCredential = new GCPCloudCredential(
+                "", true, "", "", "", "", "", "");
+        GCPCloudConfiguration conf = new GCPCloudConfiguration(gcpCredential);
+        conf.loadCommonFields(new java.util.HashMap<>(0));
+        return conf;
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
