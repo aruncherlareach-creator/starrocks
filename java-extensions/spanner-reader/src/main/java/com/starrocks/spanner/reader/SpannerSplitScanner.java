@@ -16,78 +16,71 @@ package com.starrocks.spanner.reader;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.google.spanner.v1.SpannerGrpc;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.ListValue;
-import com.google.protobuf.Value;
-import com.google.spanner.v1.KeySet;
-import com.google.spanner.v1.ReadRequest;
-import com.google.spanner.v1.ResultSet;
-import com.google.spanner.v1.TransactionSelector;
+import com.google.cloud.spanner.BatchClient;
+import com.google.cloud.spanner.BatchReadOnlyTransaction;
+import com.google.cloud.spanner.BatchTransactionId;
+import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.Partition;
+import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Spanner;
+import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.Value;
 import com.starrocks.jni.connector.ColumnType;
 import com.starrocks.jni.connector.ConnectorScanner;
 import com.starrocks.jni.connector.ScannerHelper;
 import com.starrocks.utils.loader.ThreadContextClassLoader;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.auth.MoreCallCredentials;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * BE-side scanner for Cloud Spanner external catalog partitions.
  *
- * <p>Reads one Spanner partition token using the low-level gRPC {@code Read} RPC so that
- * the full result set is returned in a single call (no streaming chunking complexity).
- * The FE {@code SpannerMetadata.getRemoteFiles()} creates one {@code SpannerRemoteFileDesc}
- * per partition token from {@code BatchClient.partitionRead()}.
+ * <p>Uses the high-level Spanner Java client to execute a single partition returned by
+ * {@code BatchClient.partitionRead()} on the FE side. The FE serialises the
+ * {@code BatchTransactionId} via {@code toBytesBase64()} and the {@code Partition} via
+ * {@code Partition.serialize()}; both are reconstructed here.
  *
- * <p>Params received via the split-info map (set by {@code SpannerScanNode}):
+ * <p>Params received via the split-info map:
  * <ul>
- *   <li>{@code project_id}        — GCP project</li>
- *   <li>{@code instance_id}       — Spanner instance</li>
- *   <li>{@code database_id}       — Spanner database name</li>
- *   <li>{@code table_id}          — Spanner table name</li>
- *   <li>{@code required_fields}   — comma-separated column list</li>
+ *   <li>{@code project_id}         — GCP project</li>
+ *   <li>{@code instance_id}        — Spanner instance</li>
+ *   <li>{@code database_id}        — Spanner database name</li>
+ *   <li>{@code required_fields}    — comma-separated column list</li>
  *   <li>{@code credentials_base64} — OAuth2 access token</li>
- *   <li>{@code session_name}      — full session resource path</li>
- *   <li>{@code transaction_id}    — Base64 of raw transaction-ID bytes</li>
- *   <li>{@code partition_token}   — Base64 of raw partition-token bytes</li>
+ *   <li>{@code batch_txn_base64}   — BatchTransactionId.toBytesBase64()</li>
+ *   <li>{@code partition_base64}   — Base64(Partition.serialize())</li>
  * </ul>
  */
 public class SpannerSplitScanner extends ConnectorScanner {
     private static final Logger LOG = LogManager.getLogger(SpannerSplitScanner.class);
 
-    private static final String SPANNER_ENDPOINT = "spanner.googleapis.com";
-    private static final int SPANNER_PORT = 443;
-
-    private final String sessionName;
-    private final String transactionId;
-    private final String partitionToken;
-    private final String tableName;
+    private final String projectId;
+    private final String instanceId;
+    private final String databaseId;
+    private final String batchTxnBase64;
+    private final String partitionBase64;
     private final String[] requiredFields;
     private final ColumnType[] requiredTypes;
     private final int fetchSize;
     private final ClassLoader classLoader;
     private final GoogleCredentials credentials;
 
-    private ManagedChannel channel;
-    private List<ListValue> rows;
-    private int currentRow;
+    private Spanner spanner;
+    private ResultSet resultSet;
 
     public SpannerSplitScanner(int fetchSize, Map<String, String> params) {
         this.fetchSize = fetchSize;
-        this.sessionName = params.get("session_name");
-        this.transactionId = params.get("transaction_id");
-        this.partitionToken = params.get("partition_token");
-        this.tableName = params.get("table_id");
+        this.projectId = params.get("project_id");
+        this.instanceId = params.get("instance_id");
+        this.databaseId = params.get("database_id");
+        this.batchTxnBase64 = params.get("batch_txn_base64");
+        this.partitionBase64 = params.get("partition_base64");
         this.requiredFields = ScannerHelper.splitAndOmitEmptyStrings(params.get("required_fields"), ",");
         this.classLoader = this.getClass().getClassLoader();
         this.credentials = buildCredentials(params);
@@ -114,35 +107,26 @@ public class SpannerSplitScanner extends ConnectorScanner {
     @Override
     public void open() throws IOException {
         try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(classLoader)) {
-            channel = ManagedChannelBuilder.forAddress(SPANNER_ENDPOINT, SPANNER_PORT)
-                    .useTransportSecurity()
+            SpannerOptions options = SpannerOptions.newBuilder()
+                    .setProjectId(projectId)
+                    .setCredentials(credentials)
                     .build();
+            spanner = options.getService();
 
-            SpannerGrpc.SpannerBlockingStub stub = SpannerGrpc.newBlockingStub(channel)
-                    .withCallCredentials(MoreCallCredentials.from(credentials));
+            BatchClient batchClient = spanner.getBatchClient(
+                    DatabaseId.of(projectId, instanceId, databaseId));
 
-            byte[] txnBytes = Base64.getDecoder().decode(transactionId);
-            byte[] tokenBytes = Base64.getDecoder().decode(partitionToken);
+            BatchTransactionId batchTxnId = BatchTransactionId.fromBytesBase64(batchTxnBase64);
+            BatchReadOnlyTransaction batchTxn = batchClient.batchReadOnlyTransaction(batchTxnId);
 
-            ReadRequest readReq = ReadRequest.newBuilder()
-                    .setSession(sessionName)
-                    .setTransaction(TransactionSelector.newBuilder()
-                            .setId(ByteString.copyFrom(txnBytes))
-                            .build())
-                    .setTable(tableName)
-                    .addAllColumns(Arrays.asList(requiredFields))
-                    .setKeySet(KeySet.newBuilder().setAll(true).build())
-                    .setPartitionToken(ByteString.copyFrom(tokenBytes))
-                    .build();
+            byte[] partitionBytes = Base64.getDecoder().decode(partitionBase64);
+            Partition partition = Partition.deserialize(partitionBytes);
 
-            ResultSet resultSet = stub.read(readReq);
-            rows = resultSet.getRowsList();
-            currentRow = 0;
-
+            resultSet = batchTxn.execute(partition);
             initOffHeapTableWriter(requiredTypes, requiredFields, fetchSize);
         } catch (Exception e) {
             close();
-            String msg = "Failed to open Spanner reader for table " + tableName + ": ";
+            String msg = "Failed to open Spanner reader for database " + databaseId + ": ";
             LOG.error("{}{}", msg, e.getMessage(), e);
             throw new IOException(msg + e.getMessage(), e);
         }
@@ -151,20 +135,16 @@ public class SpannerSplitScanner extends ConnectorScanner {
     @Override
     public void close() throws IOException {
         try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(classLoader)) {
-            if (channel != null && !channel.isShutdown()) {
-                channel.shutdown();
-                try {
-                    if (!channel.awaitTermination(5, TimeUnit.SECONDS)) {
-                        channel.shutdownNow();
-                    }
-                } catch (InterruptedException ie) {
-                    channel.shutdownNow();
-                    Thread.currentThread().interrupt();
-                }
-                channel = null;
+            if (resultSet != null) {
+                resultSet.close();
+                resultSet = null;
+            }
+            if (spanner != null) {
+                spanner.close();
+                spanner = null;
             }
         } catch (Exception e) {
-            String msg = "Failed to close Spanner reader for table " + tableName + ": ";
+            String msg = "Failed to close Spanner reader for database " + databaseId + ": ";
             LOG.error("{}{}", msg, e.getMessage(), e);
             throw new IOException(msg + e.getMessage(), e);
         }
@@ -173,23 +153,19 @@ public class SpannerSplitScanner extends ConnectorScanner {
     @Override
     public int getNext() throws IOException {
         try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(classLoader)) {
-            if (rows == null || currentRow >= rows.size()) {
+            if (resultSet == null) {
                 return 0;
             }
 
             int rowCount = 0;
-            while (rowCount < fetchSize && currentRow < rows.size()) {
-                ListValue rowData = rows.get(currentRow++);
+            while (rowCount < fetchSize && resultSet.next()) {
+                Struct row = resultSet.getCurrentRowAsStruct();
                 for (int col = 0; col < requiredFields.length; col++) {
-                    if (col >= rowData.getValuesCount()) {
-                        appendData(col, null);
-                        continue;
-                    }
-                    Value val = rowData.getValues(col);
-                    if (val.getKindCase() == Value.KindCase.NULL_VALUE) {
+                    Value val = row.getValue(requiredFields[col]);
+                    if (val.isNull()) {
                         appendData(col, null);
                     } else {
-                        Object javaVal = SpannerTypeUtils.getValue(val, false);
+                        Object javaVal = SpannerTypeUtils.getValue(val);
                         appendData(col, javaVal != null ? new SpannerColumnValue(javaVal) : null);
                     }
                 }
@@ -198,7 +174,7 @@ public class SpannerSplitScanner extends ConnectorScanner {
             return rowCount;
         } catch (Exception e) {
             close();
-            String msg = "Failed to get next batch from Spanner table " + tableName + ": ";
+            String msg = "Failed to get next batch from Spanner database " + databaseId + ": ";
             LOG.error("{}{}", msg, e.getMessage(), e);
             throw new IOException(msg + e.getMessage(), e);
         }
@@ -206,8 +182,7 @@ public class SpannerSplitScanner extends ConnectorScanner {
 
     @Override
     public String toString() {
-        return "SpannerSplitScanner{table='" + tableName + '\'' +
-                ", session='" + sessionName + '\'' +
+        return "SpannerSplitScanner{database='" + databaseId + '\'' +
                 ", requiredFields=" + Arrays.toString(requiredFields) +
                 ", fetchSize=" + fetchSize + '}';
     }

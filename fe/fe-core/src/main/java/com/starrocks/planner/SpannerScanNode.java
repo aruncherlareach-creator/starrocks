@@ -105,7 +105,7 @@ public class SpannerScanNode extends ScanNode {
             THdfsScanRange hdfsScanRange = new THdfsScanRange();
 
             Map<String, String> splitInfo = new HashMap<>(commonParams);
-            splitInfo.put("partition_token",  spannerDesc.getPartitionToken());
+            splitInfo.put("partition_base64", spannerDesc.getPartitionBase64());
             splitInfo.put("partition_index",  String.valueOf(spannerDesc.getPartitionIndex()));
 
             hdfsScanRange.setSpanner_split_infos(splitInfo);

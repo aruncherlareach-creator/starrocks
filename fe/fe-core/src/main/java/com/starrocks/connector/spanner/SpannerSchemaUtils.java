@@ -24,7 +24,6 @@ import static com.starrocks.type.BooleanType.BOOLEAN;
 import static com.starrocks.type.DateType.DATE;
 import static com.starrocks.type.DateType.DATETIME;
 import static com.starrocks.type.FloatType.DOUBLE;
-import static com.starrocks.type.FloatType.FLOAT;
 import static com.starrocks.type.IntegerType.BIGINT;
 import static com.starrocks.type.TypeFactory.createDefaultCatalogString;
 import static com.starrocks.type.VarbinaryType.VARBINARY;
@@ -53,8 +52,10 @@ public class SpannerSchemaUtils {
 
     /**
      * Convert a Spanner Type to a StarRocks Type.
-     * Spanner type codes: BOOL, INT64, FLOAT32, FLOAT64, STRING, BYTES, DATE, TIMESTAMP,
-     * JSON, ARRAY, STRUCT, NUMERIC, PG_NUMERIC, PG_JSONB, PROTO, ENUM, INTERVAL, UUID.
+     * Spanner type codes (google-cloud-spanner 6.120.0):
+     * BOOL, INT64, FLOAT32, FLOAT64, STRING, BYTES, DATE, TIMESTAMP,
+     * JSON, ARRAY, STRUCT, NUMERIC, PROTO, ENUM, INTERVAL, UUID.
+     * PG_NUMERIC and PG_JSONB are TypeAnnotationCode variants, not TypeCode.
      */
     public static com.starrocks.type.Type spannerTypeToStarRocks(Type spannerType) {
         TypeCode code = spannerType.getCode();
@@ -64,23 +65,25 @@ public class SpannerSchemaUtils {
             case INT64:
                 return BIGINT;
             case FLOAT32:
-                return FLOAT;
+                return com.starrocks.type.FloatType.FLOAT;
             case FLOAT64:
                 return DOUBLE;
             case NUMERIC:
-            case PG_NUMERIC:
-                // Spanner NUMERIC: 29 digits of integer, 9 of fraction
+                // Spanner NUMERIC: 29 integer + 9 fractional digits
                 return com.starrocks.type.TypeFactory.createUnifiedDecimalType(38, 9);
             case STRING:
-            case PG_JSONB:
+            case PROTO:
+            case ENUM:
                 return createDefaultCatalogString();
             case BYTES:
                 return VARBINARY;
             case DATE:
                 return DATE;
             case TIMESTAMP:
+            case INTERVAL:
                 return DATETIME;
             case JSON:
+            case UUID:
                 return JsonType.JSON;
             case ARRAY: {
                 com.starrocks.type.Type elementType =
@@ -88,15 +91,8 @@ public class SpannerSchemaUtils {
                 return new ArrayType(elementType);
             }
             case STRUCT:
-                // Represent STRUCT as JSON — full nested struct mapping is future work
                 return JsonType.JSON;
-            case PROTO:
-            case ENUM:
-                // Spanner PROTO/ENUM: represent as VARCHAR (proto bytes/enum name as string)
-                return createDefaultCatalogString();
-            case INTERVAL:
-            case UUID:
-                // Spanner INTERVAL/UUID: represent as VARCHAR
+            default:
                 return createDefaultCatalogString();
             default:
                 LOG.warn("Unknown Spanner type '{}'; mapping to VARCHAR.", code);

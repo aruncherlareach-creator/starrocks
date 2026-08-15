@@ -11,40 +11,27 @@ package com.starrocks.connector.spanner;
 import com.starrocks.connector.RemoteFileDesc;
 
 /**
- * Represents one Spanner read partition — the BE uses the partitionToken
- * to call streamingRead() and fetch its slice of data.
+ * Represents one Spanner read partition.
+ * The BE uses {@code partitionBase64} (serialized via {@code Partition.serialize()})
+ * together with the {@code batch_txn_base64} in commonParams to execute the partition.
  */
 public class SpannerRemoteFileDesc extends RemoteFileDesc {
 
-    private final String sessionName;
-    private final String transactionId;
-    private final String partitionToken;
-    private final int    partitionIndex;
+    private final String partitionBase64;
+    private final int partitionIndex;
 
-    private SpannerRemoteFileDesc(String sessionName, String transactionId,
-                                   String partitionToken, int partitionIndex) {
+    private SpannerRemoteFileDesc(String partitionBase64, int partitionIndex) {
         super("spanner-partition-" + partitionIndex, "", 1L, 0L, null);
-        this.sessionName     = sessionName;
-        this.transactionId   = transactionId;
-        this.partitionToken  = partitionToken;
+        this.partitionBase64 = partitionBase64;
         this.partitionIndex  = partitionIndex;
     }
 
-    public static SpannerRemoteFileDesc create(String sessionName, String transactionId,
-                                                String partitionToken, int partitionIndex) {
-        return new SpannerRemoteFileDesc(sessionName, transactionId, partitionToken, partitionIndex);
+    public static SpannerRemoteFileDesc create(String partitionBase64, int partitionIndex) {
+        return new SpannerRemoteFileDesc(partitionBase64, partitionIndex);
     }
 
-    public String getSessionName() {
-        return sessionName;
-    }
-
-    public String getTransactionId() {
-        return transactionId;
-    }
-
-    public String getPartitionToken() {
-        return partitionToken;
+    public String getPartitionBase64() {
+        return partitionBase64;
     }
 
     public int getPartitionIndex() {

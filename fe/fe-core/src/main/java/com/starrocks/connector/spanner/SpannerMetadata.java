@@ -183,15 +183,9 @@ public class SpannerMetadata implements ConnectorMetadata {
         // The access token serialised into spanner_split_infos also expires (typically 1 hour).
         LOG.info("Spanner batch transaction opened for {}/{}", databaseId, tblName);
 
-        String sessionName   = txn.getBatchTransactionId().getSessionId();
-        String transactionId;
-        try {
-            transactionId = Base64.getEncoder().encodeToString(
-                    txn.getBatchTransactionId().getTransactionId().toByteArray());
-        } catch (Exception e) {
-            throw new StarRocksConnectorException(
-                    "Failed to serialize Spanner transaction ID: " + e.getMessage(), e);
-        }
+        // toBytesBase64() is the only public serialization API on BatchTransactionId;
+        // getSessionId() and getTransactionId() are package-private.
+        String batchTxnBase64 = txn.getBatchTransactionId().toBytesBase64();
 
         List<Partition> partitions;
         try {
@@ -222,21 +216,19 @@ public class SpannerMetadata implements ConnectorMetadata {
         commonParams.put("table_id",            tblName);
         commonParams.put("required_fields",     String.join(",", fieldNames));
         commonParams.put("credentials_base64",  credentialsBase64);
-        commonParams.put("session_name",        sessionName);
-        commonParams.put("transaction_id",      transactionId);
+        commonParams.put("batch_txn_base64",    batchTxnBase64);
 
         List<RemoteFileDesc> fileDescs = new ArrayList<>();
         for (int i = 0; i < partitions.size(); i++) {
-            String partitionToken;
+            String partitionBase64;
             try {
-                partitionToken = Base64.getEncoder().encodeToString(
-                        partitions.get(i).getPartitionToken().toByteArray());
+                partitionBase64 = Base64.getEncoder().encodeToString(
+                        partitions.get(i).serialize());
             } catch (Exception e) {
                 throw new StarRocksConnectorException(
-                        "Failed to serialize Spanner partition token: " + e.getMessage(), e);
+                        "Failed to serialize Spanner partition: " + e.getMessage(), e);
             }
-            fileDescs.add(SpannerRemoteFileDesc.create(sessionName, transactionId,
-                    partitionToken, i));
+            fileDescs.add(SpannerRemoteFileDesc.create(partitionBase64, i));
         }
 
         RemoteFileInfo remoteFileInfo = new RemoteFileInfo();
