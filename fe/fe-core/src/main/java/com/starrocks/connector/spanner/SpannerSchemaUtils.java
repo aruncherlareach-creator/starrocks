@@ -12,14 +12,13 @@ import com.google.spanner.admin.database.v1.StructType;
 import com.google.spanner.v1.Type;
 import com.google.spanner.v1.TypeCode;
 import com.starrocks.catalog.Column;
+import com.starrocks.type.ArrayType;
+import com.starrocks.type.JsonType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import com.starrocks.type.ArrayType;
-import com.starrocks.type.JsonType;
 
 import static com.starrocks.type.BooleanType.BOOLEAN;
 import static com.starrocks.type.DateType.DATE;
