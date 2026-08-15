@@ -437,6 +437,10 @@ public class Table extends MetaObject implements Writable, GsonPostProcessable, 
         return type == TableType.BIGQUERY;
     }
 
+    public boolean isSpannerTable() {
+        return type == TableType.SPANNER;
+    }
+
     public boolean isJDBCTable() {
         return type == TableType.JDBC;
     }
