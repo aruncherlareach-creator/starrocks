@@ -18,7 +18,9 @@ import org.apache.logging.log4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.starrocks.type.ArrayType.createArrayType;
+import com.starrocks.type.ArrayType;
+import com.starrocks.type.JsonType;
+
 import static com.starrocks.type.BooleanType.BOOLEAN;
 import static com.starrocks.type.DateType.DATE;
 import static com.starrocks.type.DateType.DATETIME;
@@ -80,15 +82,15 @@ public class SpannerSchemaUtils {
             case TIMESTAMP:
                 return DATETIME;
             case JSON:
-                return com.starrocks.type.TypeDescriptor.createJsonType();
+                return JsonType.JSON;
             case ARRAY: {
                 com.starrocks.type.Type elementType =
                         spannerTypeToStarRocks(spannerType.getArrayElementType());
-                return createArrayType(elementType);
+                return new ArrayType(elementType);
             }
             case STRUCT:
                 // Represent STRUCT as JSON — full nested struct mapping is future work
-                return com.starrocks.type.TypeDescriptor.createJsonType();
+                return JsonType.JSON;
             case PROTO:
             case ENUM:
                 // Spanner PROTO/ENUM: represent as VARCHAR (proto bytes/enum name as string)

@@ -867,6 +867,11 @@ under the License.
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigquerystorage</artifactId>
         </dependency>
+        <!-- Cloud Spanner external catalog -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-spanner</artifactId>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.owasp.encoder/encoder -->
         <dependency>

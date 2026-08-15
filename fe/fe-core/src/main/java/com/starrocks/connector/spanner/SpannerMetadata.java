@@ -325,7 +325,7 @@ public class SpannerMetadata implements ConnectorMetadata {
         if (t.startsWith("ARRAY<")) {
             String inner = t.substring(6, t.length() - 1);
             com.starrocks.type.Type elemType = parseSpannerDdlType(inner);
-            return com.starrocks.type.ArrayType.createArrayType(elemType);
+            return new com.starrocks.type.ArrayType(elemType);
         }
         // Strip length/precision: STRING(MAX), STRING(256), BYTES(100), NUMERIC(p,s)
         String base = t.replaceAll("\\(.*\\)", "").trim();
@@ -342,7 +342,7 @@ public class SpannerMetadata implements ConnectorMetadata {
             case "BYTES":     return com.starrocks.type.VarbinaryType.VARBINARY;
             case "JSON":
             case "PG_JSONB":
-                return com.starrocks.type.TypeDescriptor.createJsonType();
+                return com.starrocks.type.JsonType.JSON;
             case "STRING":
             default:
                 return com.starrocks.type.TypeFactory.createDefaultCatalogString();
