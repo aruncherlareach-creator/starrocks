@@ -125,18 +125,6 @@ public class SpannerSchemaUtilsTest {
     }
 
     @Test
-    public void testProtoMapsToString() {
-        com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.PROTO));
-        Assertions.assertTrue(t.isStringType());
-    }
-
-    @Test
-    public void testEnumMapsToString() {
-        com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.ENUM));
-        Assertions.assertTrue(t.isStringType());
-    }
-
-    @Test
     public void testUnknownTypeCodeMapsToString() {
         // TYPE_CODE_UNSPECIFIED should fall to default
         com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(

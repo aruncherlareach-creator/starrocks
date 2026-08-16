@@ -71,18 +71,14 @@ public class SpannerSchemaUtils {
                 // Spanner NUMERIC: 29 integer + 9 fractional digits
                 return com.starrocks.type.TypeFactory.createUnifiedDecimalType(38, 9);
             case STRING:
-            case PROTO:
-            case ENUM:
                 return createDefaultCatalogString();
             case BYTES:
                 return VARBINARY;
             case DATE:
                 return DATE;
             case TIMESTAMP:
-            case INTERVAL:
                 return DATETIME;
             case JSON:
-            case UUID:
                 return JsonType.JSON;
             case ARRAY: {
                 com.starrocks.type.Type elementType =
