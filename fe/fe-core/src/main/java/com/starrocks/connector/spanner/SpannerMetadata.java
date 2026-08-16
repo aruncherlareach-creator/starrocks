@@ -346,7 +346,6 @@ public class SpannerMetadata implements ConnectorMetadata {
         switch (base) {
             case "BOOL":      return com.starrocks.type.BooleanType.BOOLEAN;
             case "INT64":     return com.starrocks.type.IntegerType.BIGINT;
-            case "FLOAT32":   return com.starrocks.type.FloatType.FLOAT;
             case "FLOAT64":   return com.starrocks.type.FloatType.DOUBLE;
             case "NUMERIC":
             case "PG_NUMERIC":

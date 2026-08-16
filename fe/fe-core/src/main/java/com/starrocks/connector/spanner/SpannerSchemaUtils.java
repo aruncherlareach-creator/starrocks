@@ -52,9 +52,10 @@ public class SpannerSchemaUtils {
 
     /**
      * Convert a Spanner Type to a StarRocks Type.
-     * Spanner type codes (google-cloud-spanner 6.120.0):
-     * BOOL, INT64, FLOAT32, FLOAT64, STRING, BYTES, DATE, TIMESTAMP,
-     * JSON, ARRAY, STRUCT, NUMERIC, PROTO, ENUM, INTERVAL, UUID.
+     * Spanner type codes (google-cloud-spanner 6.62.0):
+     * BOOL, INT64, FLOAT64, STRING, BYTES, DATE, TIMESTAMP,
+     * JSON, ARRAY, STRUCT, NUMERIC, PROTO, ENUM.
+     * FLOAT32/INTERVAL/UUID are newer additions not in 6.62.0; fall to default.
      * PG_NUMERIC and PG_JSONB are TypeAnnotationCode variants, not TypeCode.
      */
     public static com.starrocks.type.Type spannerTypeToStarRocks(Type spannerType) {
@@ -64,8 +65,6 @@ public class SpannerSchemaUtils {
                 return BOOLEAN;
             case INT64:
                 return BIGINT;
-            case FLOAT32:
-                return com.starrocks.type.FloatType.FLOAT;
             case FLOAT64:
                 return DOUBLE;
             case NUMERIC:

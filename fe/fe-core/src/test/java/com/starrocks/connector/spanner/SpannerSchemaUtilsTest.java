@@ -125,12 +125,6 @@ public class SpannerSchemaUtilsTest {
     }
 
     @Test
-    public void testFloat32MapsToFloat() {
-        com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.FLOAT32));
-        Assertions.assertEquals(com.starrocks.type.FloatType.FLOAT, t);
-    }
-
-    @Test
     public void testProtoMapsToString() {
         com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.PROTO));
         Assertions.assertTrue(t.isStringType());
@@ -139,18 +133,6 @@ public class SpannerSchemaUtilsTest {
     @Test
     public void testEnumMapsToString() {
         com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.ENUM));
-        Assertions.assertTrue(t.isStringType());
-    }
-
-    @Test
-    public void testIntervalMapsToString() {
-        com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.INTERVAL));
-        Assertions.assertTrue(t.isStringType());
-    }
-
-    @Test
-    public void testUuidMapsToString() {
-        com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.UUID));
         Assertions.assertTrue(t.isStringType());
     }
 
