@@ -187,7 +187,13 @@ public class SpannerMetadata implements ConnectorMetadata {
 
         // Use Java serialization: toBytesBase64()/getSessionId()/getTransactionId() are not
         // available in all library versions. BatchTransactionId implements Serializable.
-        String batchTxnBase64 = serializeObject(txn.getBatchTransactionId());
+        String batchTxnBase64;
+        try {
+            batchTxnBase64 = serializeObject(txn.getBatchTransactionId());
+        } catch (Exception e) {
+            throw new StarRocksConnectorException(
+                    "Failed to serialize Spanner batch transaction: " + e.getMessage(), e);
+        }
 
         List<Partition> partitions;
         try {
