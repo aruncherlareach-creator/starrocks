@@ -96,7 +96,7 @@ public class SpannerTypeUtilsTest {
     @Test
     public void testBytes() {
         byte[] original = new byte[] {0x01, 0x02, 0x03};
-        com.google.cloud.spanner.ByteArray ba = com.google.cloud.spanner.ByteArray.copyFrom(original);
+        com.google.cloud.ByteArray ba = com.google.cloud.ByteArray.copyFrom(original);
         Object result = SpannerTypeUtils.getValue(Value.bytes(ba));
         Assertions.assertInstanceOf(byte[].class, result);
         Assertions.assertArrayEquals(original, (byte[]) result);
