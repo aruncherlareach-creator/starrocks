@@ -135,9 +135,10 @@ public class SpannerMetadata implements ConnectorMetadata {
             while (rs.next()) {
                 String colName   = rs.getString(0).toLowerCase();
                 String spannerT  = rs.getString(1);
-                boolean nullable = "YES".equalsIgnoreCase(rs.getString(2));
+                // StarRocks requires all external table columns to be nullable;
+                // enforce nullable=true regardless of Spanner's IS_NULLABLE value.
                 com.starrocks.type.Type srType = parseSpannerDdlType(spannerT);
-                columns.add(new Column(colName, srType, nullable));
+                columns.add(new Column(colName, srType, true));
             }
         }
 
