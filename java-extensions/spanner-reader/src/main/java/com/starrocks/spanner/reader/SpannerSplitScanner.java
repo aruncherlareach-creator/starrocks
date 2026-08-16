@@ -26,9 +26,6 @@ import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
-
-import java.io.ByteArrayInputStream;
-import java.io.ObjectInputStream;
 import com.starrocks.jni.connector.ColumnType;
 import com.starrocks.jni.connector.ConnectorScanner;
 import com.starrocks.jni.connector.ScannerHelper;
@@ -36,7 +33,9 @@ import com.starrocks.utils.loader.ThreadContextClassLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
