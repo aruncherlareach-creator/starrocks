@@ -93,8 +93,6 @@ public class SpannerSchemaUtils {
             case STRUCT:
                 return JsonType.JSON;
             default:
-                return createDefaultCatalogString();
-            default:
                 LOG.warn("Unknown Spanner type '{}'; mapping to VARCHAR.", code);
                 return createDefaultCatalogString();
         }

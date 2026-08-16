@@ -26,6 +26,9 @@ import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
+
+import java.io.ByteArrayInputStream;
+import java.io.ObjectInputStream;
 import com.starrocks.jni.connector.ColumnType;
 import com.starrocks.jni.connector.ConnectorScanner;
 import com.starrocks.jni.connector.ScannerHelper;
@@ -91,6 +94,14 @@ public class SpannerSplitScanner extends ConnectorScanner {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private static <T> T deserializeObject(String base64, Class<T> type) throws Exception {
+        byte[] bytes = Base64.getDecoder().decode(base64);
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+            return type.cast(ois.readObject());
+        }
+    }
+
     private GoogleCredentials buildCredentials(Map<String, String> params) {
         String accessToken = params.getOrDefault("credentials_base64", "");
         if (!accessToken.isEmpty()) {
@@ -116,11 +127,10 @@ public class SpannerSplitScanner extends ConnectorScanner {
             BatchClient batchClient = spanner.getBatchClient(
                     DatabaseId.of(projectId, instanceId, databaseId));
 
-            BatchTransactionId batchTxnId = BatchTransactionId.fromBytesBase64(batchTxnBase64);
+            BatchTransactionId batchTxnId = deserializeObject(batchTxnBase64, BatchTransactionId.class);
             BatchReadOnlyTransaction batchTxn = batchClient.batchReadOnlyTransaction(batchTxnId);
 
-            byte[] partitionBytes = Base64.getDecoder().decode(partitionBase64);
-            Partition partition = Partition.deserialize(partitionBytes);
+            Partition partition = deserializeObject(partitionBase64, Partition.class);
 
             resultSet = batchTxn.execute(partition);
             initOffHeapTableWriter(requiredTypes, requiredFields, fetchSize);

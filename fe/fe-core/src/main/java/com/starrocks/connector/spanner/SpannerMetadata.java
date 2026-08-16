@@ -47,6 +47,8 @@ import com.starrocks.sql.optimizer.statistics.Statistics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
@@ -183,9 +185,9 @@ public class SpannerMetadata implements ConnectorMetadata {
         // The access token serialised into spanner_split_infos also expires (typically 1 hour).
         LOG.info("Spanner batch transaction opened for {}/{}", databaseId, tblName);
 
-        // toBytesBase64() is the only public serialization API on BatchTransactionId;
-        // getSessionId() and getTransactionId() are package-private.
-        String batchTxnBase64 = txn.getBatchTransactionId().toBytesBase64();
+        // Use Java serialization: toBytesBase64()/getSessionId()/getTransactionId() are not
+        // available in all library versions. BatchTransactionId implements Serializable.
+        String batchTxnBase64 = serializeObject(txn.getBatchTransactionId());
 
         List<Partition> partitions;
         try {
@@ -222,8 +224,7 @@ public class SpannerMetadata implements ConnectorMetadata {
         for (int i = 0; i < partitions.size(); i++) {
             String partitionBase64;
             try {
-                partitionBase64 = Base64.getEncoder().encodeToString(
-                        partitions.get(i).serialize());
+                partitionBase64 = serializeObject(partitions.get(i));
             } catch (Exception e) {
                 throw new StarRocksConnectorException(
                         "Failed to serialize Spanner partition: " + e.getMessage(), e);
@@ -276,6 +277,21 @@ public class SpannerMetadata implements ConnectorMetadata {
                     .build());
         }
         return builder.build();
+    }
+
+    // ── Serialization helpers ─────────────────────────────────────────────────
+
+    /**
+     * Java-serializes an object and returns it as a Base64 string.
+     * Used for BatchTransactionId and Partition which both implement Serializable
+     * but don't expose a public proto-based serialization API in all library versions.
+     */
+    private static String serializeObject(Object obj) throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(obj);
+        }
+        return Base64.getEncoder().encodeToString(baos.toByteArray());
     }
 
     // ── CloudConfiguration ─────────────────────────────────────────────────────
