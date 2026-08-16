@@ -95,7 +95,7 @@ public class SpannerTypeUtilsTest {
 
     @Test
     public void testBytes() {
-        byte[] original = new byte[]{0x01, 0x02, 0x03};
+        byte[] original = new byte[] {0x01, 0x02, 0x03};
         com.google.cloud.spanner.ByteArray ba = com.google.cloud.spanner.ByteArray.copyFrom(original);
         Object result = SpannerTypeUtils.getValue(Value.bytes(ba));
         Assertions.assertInstanceOf(byte[].class, result);
@@ -145,7 +145,7 @@ public class SpannerTypeUtilsTest {
 
     @Test
     public void testArrayOfInt64() {
-        Value v = Value.int64Array(new long[]{1L, 2L, 3L});
+        Value v = Value.int64Array(new long[] {1L, 2L, 3L});
         Object result = SpannerTypeUtils.getValue(v);
         Assertions.assertInstanceOf(List.class, result);
         Assertions.assertEquals(3, ((List<?>) result).size());
