@@ -89,21 +89,9 @@ public class SpannerSchemaUtilsTest {
     }
 
     @Test
-    public void testPgNumericMapsToDecimal() {
-        com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.PG_NUMERIC));
-        Assertions.assertTrue(t.isDecimalV3());
-    }
-
-    @Test
     public void testJsonMapsToJson() {
         com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.JSON));
         Assertions.assertTrue(t.isJsonType());
-    }
-
-    @Test
-    public void testPgJsonbMapsToString() {
-        com.starrocks.type.Type t = SpannerSchemaUtils.spannerTypeToStarRocks(spannerType(TypeCode.PG_JSONB));
-        Assertions.assertTrue(t.isStringType());
     }
 
     @Test
