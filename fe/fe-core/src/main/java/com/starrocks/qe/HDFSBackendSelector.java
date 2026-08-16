@@ -30,15 +30,18 @@ import com.starrocks.common.profile.Tracers;
 import com.starrocks.common.util.ConsistentHashRing;
 import com.starrocks.common.util.HashRing;
 import com.starrocks.common.util.RendezvousHashRing;
+import com.starrocks.planner.BigQueryScanNode;
 import com.starrocks.planner.DeltaLakeScanNode;
 import com.starrocks.planner.FileTableScanNode;
 import com.starrocks.planner.HdfsScanNode;
 import com.starrocks.planner.HudiScanNode;
 import com.starrocks.planner.IcebergMetadataScanNode;
 import com.starrocks.planner.IcebergScanNode;
+import com.starrocks.planner.KuduScanNode;
 import com.starrocks.planner.OdpsScanNode;
 import com.starrocks.planner.PaimonScanNode;
 import com.starrocks.planner.ScanNode;
+import com.starrocks.planner.SpannerScanNode;
 import com.starrocks.qe.scheduler.CandidateWorkerProvider;
 import com.starrocks.qe.scheduler.NonRecoverableException;
 import com.starrocks.qe.scheduler.WorkerProvider;
@@ -137,6 +140,11 @@ public class HDFSBackendSelector implements BackendSelector {
                 predicates = node.getScanNodePredicates();
             } else if (scanNode instanceof IcebergMetadataScanNode) {
                 // ignored
+            } else if (scanNode instanceof KuduScanNode) {
+                KuduScanNode node = (KuduScanNode) scanNode;
+                predicates = node.getScanNodePredicates();
+            } else if (scanNode instanceof BigQueryScanNode || scanNode instanceof SpannerScanNode) {
+                // BigQuery / Spanner: unpartitioned, no file paths — scan ranges hash by content only
             } else {
                 Preconditions.checkState(false);
             }
