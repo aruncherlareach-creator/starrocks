@@ -58,7 +58,12 @@ public class BigQuerySplitScanner extends ConnectorScanner {
     private final ColumnType[] requiredTypes;
     private final int fetchSize;
     private final ClassLoader classLoader;
-    private final BigQueryReadClient readClient;
+    private GoogleCredentials credentials;
+    // Initialised lazily in open() inside ThreadContextClassLoader so that
+    // BigQueryReadClient.create() runs with the bigquery-reader-lib classloader
+    // as the thread context.  gRPC uses ServiceLoader (context-CL) to discover
+    // its transport; calling create() with the system CL as context causes NPE.
+    private BigQueryReadClient readClient;
 
     /** Arrow schema bytes from ReadSession, used to build VectorSchemaRoot. */
     private final byte[] arrowSchemaBytes;
@@ -80,8 +85,8 @@ public class BigQuerySplitScanner extends ConnectorScanner {
                 ? new byte[0]
                 : Base64.getDecoder().decode(schemaBase64);
 
-        GoogleCredentials credentials = buildCredentials(params);
-        this.readClient = buildReadClient(credentials);
+        // readClient is initialised in open() with the correct thread context classloader.
+        this.credentials = buildCredentials(params);
 
         // ColumnType array: use "varchar" for all fields as the off-heap table will coerce values
         // via the ColumnValue interface methods (getDate, getDateTime, getLong, etc.).
@@ -126,6 +131,10 @@ public class BigQuerySplitScanner extends ConnectorScanner {
     @Override
     public void open() throws IOException {
         try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(classLoader)) {
+            // Create the read client inside ThreadContextClassLoader so that gRPC's
+            // ServiceLoader-based transport discovery uses the bigquery-reader-lib CL.
+            readClient = buildReadClient(credentials);
+
             // Build VectorSchemaRoot from the Arrow schema serialised in the ReadSession.
             if (arrowSchemaBytes.length > 0) {
                 ReadableByteChannel channel = Channels.newChannel(new ByteArrayInputStream(arrowSchemaBytes));
