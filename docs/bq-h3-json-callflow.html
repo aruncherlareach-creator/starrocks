@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Ontology DB — BigQuery · H3/MGRS · JSON PIPE</title>
+<title>Ontology DB — BigQuery · Cloud Spanner · H3/MGRS · JSON PIPE</title>
 <style>
 /* ── Verizon NHG fonts ─────────────────────────────────────── */
 @font-face{font-family:'VZ';font-weight:400;font-style:normal;font-display:swap;src:url('https://scache1.vzw.com/globalnav/fonts/verizon-nhg/VerizonNHGeDS-Regular.woff2') format('woff2');}
@@ -221,8 +221,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
       <div class="topbar-sub">Catalog ecosystem · External connectors · Geospatial · JSON PIPE · 4.1.4-verizon</div>
     </div>
     <div style="display:flex;gap:8px;">
-      <span class="bdg bdg-ok"><span class="bdg-dot"></span>H3 · JSON Deployed</span>
-      <span class="bdg bdg-neu" style="background:#fff2cc;color:#7a4f00;">BQ target: Aug 17</span>
+      <span class="bdg bdg-ok"><span class="bdg-dot"></span>BQ · Spanner · H3 · MGRS · JSON PIPE — All Deployed ✓</span>
     </div>
   </header>
 
@@ -640,6 +639,8 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
               <tr style="background:var(--surface2);"><th style="text-align:left;padding:3px 6px;">Query</th><th style="padding:3px 6px;">BQ Direct</th><th style="padding:3px 6px;">MV</th><th style="padding:3px 6px;">Speedup</th></tr>
               <tr><td style="padding:3px 6px;">COUNT by resource</td><td style="padding:3px 6px;text-align:right;color:#c00;">6,868 ms</td><td style="padding:3px 6px;text-align:right;color:var(--success-txt);">118 ms</td><td style="padding:3px 6px;text-align:right;font-weight:700;">58×</td></tr>
               <tr style="background:var(--surface2);"><td style="padding:3px 6px;">Filter + aggregate</td><td style="padding:3px 6px;text-align:right;color:#c00;">4,479 ms</td><td style="padding:3px 6px;text-align:right;color:var(--success-txt);">160 ms</td><td style="padding:3px 6px;text-align:right;font-weight:700;">28×</td></tr>
+              <tr><td style="padding:3px 6px;">GROUP BY (9.8M rows → 107)</td><td style="padding:3px 6px;text-align:right;color:#c00;">10,729 ms</td><td style="padding:3px 6px;text-align:right;color:var(--success-txt);">140 ms</td><td style="padding:3px 6px;text-align:right;font-weight:700;">76×</td></tr>
+              <tr style="background:var(--surface2);"><td style="padding:3px 6px;">MV refresh (9.8M → 107 rows)</td><td style="padding:3px 6px;text-align:right;color:#aaa;">N/A</td><td style="padding:3px 6px;text-align:right;color:var(--success-txt);">8 sec</td><td style="padding:3px 6px;text-align:right;">once daily</td></tr>
               <tr><td style="padding:3px 6px;">CASE + ORDER BY on MV</td><td style="padding:3px 6px;text-align:right;color:#aaa;">—</td><td style="padding:3px 6px;text-align:right;color:var(--success-txt);">156 ms</td><td style="padding:3px 6px;text-align:right;">local only</td></tr>
             </table>
           </div>
@@ -2224,9 +2225,9 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
     <text x="692" y="484" text-anchor="middle" font-size="9"  fill="#716f6d">Arrow streaming · WIF</text>
     <text x="692" y="494" text-anchor="middle" font-size="9"  fill="#716f6d">MV query rewrite</text>
     <rect x="632" y="499" width="80" height="14" rx="3" fill="#e10014"/>
-    <text x="672" y="510" text-anchor="middle" font-size="8" font-weight="700" fill="#fff">NEW · Aug 17</text>
+    <text x="672" y="510" text-anchor="middle" font-size="8" font-weight="700" fill="#fff">NEW · Live ✓</text>
     <!-- Spanner -->
-    <rect x="775" y="440" width="145" height="62" rx="8" fill="#fff2cc" stroke="#7a4f00" stroke-width="2" stroke-dasharray="5,3" filter="url(#shadow)"/>
+    <rect x="775" y="440" width="145" height="62" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2" filter="url(#shadow)"/>
     <text x="847" y="455" text-anchor="middle" font-size="12" font-weight="700" fill="#7a4f00">Cloud Spanner</text>
     <text x="847" y="467" text-anchor="middle" font-size="9" fill="#7a4f00">via Cloud Spanner</text>
     <text x="847" y="479" text-anchor="middle" font-size="9"  fill="#716f6d">Global distributed SQL</text>
@@ -2261,7 +2262,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
     <text x="340" y="632" font-size="9" fill="#7a4f00">Databases / Search</text>
     <rect x="470" y="622" width="10" height="10" rx="2" fill="#fde8eb" stroke="#e10014" stroke-width="1.5"/>
     <text x="485" y="632" font-size="9" fill="#c40015">New (BigQuery)</text>
-    <rect x="580" y="622" width="10" height="10" rx="2" fill="#fff2cc" stroke="#7a4f00" stroke-dasharray="3,2"/>
+    <rect x="580" y="622" width="10" height="10" rx="2" fill="#e8f5e9" stroke="#2e7d32"/>
     <text x="595" y="632" font-size="9" fill="#2e7d32">New (Cloud Spanner)</text>
     <rect x="705" y="622" width="10" height="10" rx="2" fill="#1d1d1b" stroke="#3a3a38"/>
     <text x="720" y="632" font-size="9" fill="#000">Internal catalog (default_catalog)</text>
@@ -2299,17 +2300,18 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
 <div id="spanner" class="panel">
   <p class="stitle">Cloud Spanner External Catalog — <span style="color:#2e7d32;">Implemented ✓</span></p>
 
-  <div class="cl cl-warn" style="margin-bottom:16px;">
-    <h4>What this will give you</h4>
+  <div class="cl cl-ok" style="margin-bottom:16px;">
+    <h4>What this gives you</h4>
     Query data in Cloud Spanner databases directly from Ontology DB SQL — no ETL, no replication.
     Cloud Spanner&#39;s strong consistency and globally distributed storage make it ideal for real-time network
-    inventory, device state, and topology data. The Spanner connector will use the Spanner API over gRPC
-    with GKE Workload Identity, following the same pattern as the BigQuery catalog.
+    inventory, device state, and topology data. The Spanner connector uses the Spanner API over gRPC
+    with GKE Workload Identity, following the same pattern as the BigQuery catalog. Verified on NP:
+    9 databases discovered (anp-spanner-db, network_cnd, network_fuze, network_panther&hellip;).
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;">
       <span style="font-family:var(--text);font-size:11px;font-weight:700;color:var(--muted);">Enables:</span>
-      <span style="background:#fff2cc;color:#7a4f00;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Spanner Workloads</span>
-      <span style="background:#fff2cc;color:#7a4f00;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Topology Queries</span>
-      <span style="background:#fff2cc;color:#7a4f00;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Impact Assessment</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Spanner Workloads</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Topology Queries</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Impact Assessment</span>
     </div>
   </div>
 
@@ -2339,7 +2341,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
     <text x="24" y="26"  font-size="9" font-weight="700" fill="#aaa8a3" letter-spacing="1">USER / BI TOOL</text>
     <text x="24" y="100" font-size="9" font-weight="700" fill="#0047b3" letter-spacing="1">ONTOLOGY DB — FRONTEND (FE)</text>
     <text x="24" y="285" font-size="9" font-weight="700" fill="#006625" letter-spacing="1">ONTOLOGY DB — BACKEND (BE)</text>
-    <text x="24" y="405" font-size="9" font-weight="700" fill="#7a4f00" letter-spacing="1">GOOGLE CLOUD PLATFORM (PLANNED)</text>
+    <text x="24" y="405" font-size="9" font-weight="700" fill="#2e7d32" letter-spacing="1">GOOGLE CLOUD PLATFORM</text>
     <!-- User -->
     <rect x="50"  y="28" width="115" height="38" rx="5" fill="#fff" stroke="#d8d5cf"/>
     <text x="107" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#000">SQL Client</text>
@@ -2385,16 +2387,16 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
     <text x="762" y="306" text-anchor="middle" font-size="11" font-weight="600" fill="#006625">BE Execution Pipeline</text>
     <text x="762" y="319" text-anchor="middle" font-size="9"  fill="#716f6d">Filter · Project · Aggregate</text>
     <text x="762" y="330" text-anchor="middle" font-size="9"  fill="#716f6d">Result rows → FE → Client</text>
-    <!-- GCP (planned) -->
-    <rect x="25"  y="410" width="200" height="50" rx="5" fill="#fff" stroke="#f0dda0" stroke-dasharray="5,2"/>
+    <!-- GCP (implemented) -->
+    <rect x="25"  y="410" width="200" height="50" rx="5" fill="#fff" stroke="#a5d6a7"/>
     <text x="125" y="428" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">Spanner API (gRPC)</text>
     <text x="125" y="441" text-anchor="middle" font-size="9"  fill="#716f6d">Read / ExecuteSql</text>
     <text x="125" y="452" text-anchor="middle" font-size="9"  fill="#716f6d">spanner.googleapis.com:443</text>
-    <rect x="240" y="410" width="200" height="50" rx="5" fill="#fff" stroke="#f0dda0" stroke-dasharray="5,2"/>
+    <rect x="240" y="410" width="200" height="50" rx="5" fill="#fff" stroke="#a5d6a7"/>
     <text x="340" y="428" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">Spanner Tables</text>
     <text x="340" y="441" text-anchor="middle" font-size="9"  fill="#716f6d">Tables · Views</text>
     <text x="340" y="452" text-anchor="middle" font-size="9"  fill="#716f6d">Strongly consistent reads</text>
-    <rect x="455" y="410" width="200" height="50" rx="5" fill="#fff" stroke="#f0dda0" stroke-dasharray="5,2"/>
+    <rect x="455" y="410" width="200" height="50" rx="5" fill="#fff" stroke="#a5d6a7"/>
     <text x="555" y="428" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4f00">IAM / Workload Identity</text>
     <text x="555" y="441" text-anchor="middle" font-size="9"  fill="#716f6d">GKE WIF → SA impersonation</text>
     <text x="555" y="452" text-anchor="middle" font-size="9"  fill="#716f6d">ADC — same as BigQuery</text>
@@ -2411,8 +2413,8 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
     <line x1="640" y1="311" x2="653" y2="311" stroke="#006625" stroke-width="1.5" marker-end="url(#spG)"/>
     <line x1="340" y1="334" x2="340" y2="408" stroke="#7a4f00" stroke-width="2" stroke-dasharray="5,2" marker-end="url(#spO)"/>
     <text x="347" y="374" font-size="9" fill="#7a4f00">Spanner API (gRPC)</text>
-    <!-- PLANNED watermark -->
-    <text x="450" y="250" text-anchor="middle" font-size="28" font-weight="700" fill="#7a4f00" opacity="0.07" transform="rotate(-20,450,250)">PLANNED</text>
+    <!-- Implemented watermark -->
+    <text x="450" y="250" text-anchor="middle" font-size="22" font-weight="700" fill="#2e7d32" opacity="0.07" transform="rotate(-20,450,250)">IMPLEMENTED</text>
   </svg>
   </div><!-- /sp-arch -->
 
@@ -2420,7 +2422,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
   <div id="sp-flow" class="iview">
   <div class="g2">
     <div class="card">
-      <div class="cl cl-warn" style="margin-top:0">
+      <div class="cl cl-ok" style="margin-top:0">
         <h4>Phase 1 — Catalog creation &amp; metadata</h4>
         <code style="background:none;padding:0;color:inherit;font-family:var(--mono);font-size:11px;">CREATE EXTERNAL CATALOG my_spanner PROPERTIES("type"="spanner",...)</code>
       </div>
@@ -2445,7 +2447,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
       </div>
     </div>
     <div class="card">
-      <div class="cl cl-warn" style="margin-top:0">
+      <div class="cl cl-ok" style="margin-top:0">
         <h4>Phase 2 — Query execution</h4>
         <code style="background:none;padding:0;color:inherit;font-family:var(--mono);font-size:11px;">SELECT * FROM my_spanner.mydb.my_table WHERE region='NE'</code>
       </div>
