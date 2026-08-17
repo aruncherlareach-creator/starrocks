@@ -60,7 +60,7 @@ docker-build-be:
         --label "org.opencontainers.image.source=${CI_PROJECT_URL}"
         --label "org.opencontainers.image.revision=${CI_COMMIT_SHA}"
   rules:
-    - if: '$CI_COMMIT_BRANCH =~ /verizon/ || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH =~ /verizon/ || $CI_COMMIT_BRANCH =~ /^feature\// || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
       when: on_success
     - if: '$CI_COMMIT_BRANCH'
       when: manual
@@ -88,7 +88,7 @@ docker-build-fe:
         --label "org.opencontainers.image.source=${CI_PROJECT_URL}"
         --label "org.opencontainers.image.revision=${CI_COMMIT_SHA}"
   rules:
-    - if: '$CI_COMMIT_BRANCH =~ /verizon/ || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH =~ /verizon/ || $CI_COMMIT_BRANCH =~ /^feature\// || $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
       when: on_success
     - if: '$CI_COMMIT_BRANCH'
       when: manual
