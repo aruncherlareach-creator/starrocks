@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Ontology DB — BigQuery · Cloud Spanner · H3/MGRS · JSON PIPE</title>
+<title>Ontology DB — BigQuery · Cloud Spanner · H3/MGRS · JSON PIPE · GEOMETRY</title>
 <style>
 /* ── Verizon NHG fonts ─────────────────────────────────────── */
 @font-face{font-family:'VZ';font-weight:400;font-style:normal;font-display:swap;src:url('https://scache1.vzw.com/globalnav/fonts/verizon-nhg/VerizonNHGeDS-Regular.woff2') format('woff2');}
@@ -200,6 +200,14 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
       </span>
     </div>
   </div>
+    <div class="sb-link" onclick="go('geometry',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="8,2 13,6 11,13 5,13 3,6"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg>
+      GEOMETRY Type
+      <span class="sb-status">
+        <svg class="icon-done" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8l4 4 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </div>
+  </div>
   <div class="sb-sect">
     <div class="sb-lbl">Catalog</div>
     <div class="sb-link" onclick="go('catalogs',this)">
@@ -218,10 +226,10 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
   <header class="topbar">
     <div>
       <div class="topbar-title">Ontology DB Architecture</div>
-      <div class="topbar-sub">Catalog ecosystem · External connectors · Geospatial · JSON PIPE · 4.1.4-verizon</div>
+      <div class="topbar-sub">Catalog ecosystem · External connectors · Geospatial · GEOMETRY · JSON PIPE · 4.1.4-verizon</div>
     </div>
     <div style="display:flex;gap:8px;">
-      <span class="bdg bdg-ok"><span class="bdg-dot"></span>BQ · Spanner · H3 · MGRS · JSON PIPE — All Deployed ✓</span>
+      <span class="bdg bdg-ok"><span class="bdg-dot"></span>BQ · Spanner · H3 · MGRS · JSON PIPE · GEOMETRY — All Deployed ✓</span>
     </div>
   </header>
 
@@ -2547,6 +2555,568 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
 
 </div>
 <!-- ══════ end spanner panel ══════ -->
+
+<!-- ══════════════════════════════════════
+     GEOMETRY PANEL
+══════════════════════════════════════ -->
+<div id="geometry" class="panel">
+  <p class="stitle">GEOMETRY Type — PostGIS-compatible Spatial Analytics</p>
+
+  <div class="cl cl-ok" style="margin-bottom:16px;">
+    <h4>What this gives you</h4>
+    A first-class <code style="font-family:var(--mono);background:rgba(0,102,37,.1);padding:1px 5px;border-radius:3px;">GEOMETRY</code>
+    scalar column type with 58 PostGIS-compatible spatial functions, a GiST R-Tree index for O(log n) spatial predicate acceleration,
+    and <code style="font-family:var(--mono);background:rgba(0,102,37,.1);padding:1px 5px;border-radius:3px;">ST_ClusterDBSCAN</code> /
+    <code style="font-family:var(--mono);background:rgba(0,102,37,.1);padding:1px 5px;border-radius:3px;">ST_ClusterKMeans</code>
+    window functions for partition-level geospatial clustering. Storage uses WKB (Well-Known Binary) backed by the S2 geometry engine.
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;">
+      <span style="font-family:var(--text);font-size:11px;font-weight:700;color:var(--muted);">Enables:</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Spatial Analytics</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Network Geo</span>
+      <span style="background:#e0f4e8;color:#006625;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:var(--text);">Site Coverage</span>
+    </div>
+  </div>
+
+  <div class="itabs">
+    <button class="itab active" onclick="itab(this,'geo-arch')">Architecture</button>
+    <button class="itab" onclick="itab(this,'geo-flow')">Call Flow</button>
+    <button class="itab" onclick="itab(this,'geo-funcs')">Function Reference</button>
+    <button class="itab" onclick="itab(this,'geo-ex')">Examples</button>
+  </div>
+
+  <!-- ── Architecture ── -->
+  <div id="geo-arch" class="iview active">
+    <svg viewBox="0 0 900 530" style="width:100%;max-height:600px;display:block;font-family:'VZ','Helvetica Neue',Arial,sans-serif;" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="geoFE"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#dceeff"/><stop offset="100%" stop-color="#c8e4ff"/></linearGradient>
+        <linearGradient id="geoBE"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e0f4e8"/><stop offset="100%" stop-color="#c8edd4"/></linearGradient>
+        <linearGradient id="geoS2"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f3e8ff"/><stop offset="100%" stop-color="#e9d5ff"/></linearGradient>
+        <marker id="geoBlu" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#0047b3"/></marker>
+        <marker id="geoGrn" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#006625"/></marker>
+        <marker id="geoPur" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#7e22ce"/></marker>
+      </defs>
+      <!-- Layer bands -->
+      <rect x="10" y="10"  width="880" height="60"  rx="8" fill="#f8f7f5"      stroke="#d8d5cf" stroke-width="1"/>
+      <rect x="10" y="80"  width="880" height="160" rx="8" fill="url(#geoFE)"  stroke="#aad1f7" stroke-width="1"/>
+      <rect x="10" y="250" width="880" height="160" rx="8" fill="url(#geoBE)"  stroke="#b3dfc3" stroke-width="1"/>
+      <rect x="10" y="420" width="880" height="90"  rx="8" fill="url(#geoS2)"  stroke="#c4b5fd" stroke-width="1"/>
+      <!-- Layer labels -->
+      <text x="24" y="26"  font-size="9" font-weight="700" letter-spacing="1" fill="#aaa8a3">USER / SQL</text>
+      <text x="24" y="95"  font-size="9" font-weight="700" letter-spacing="1" fill="#0047b3">FRONTEND (FE) — TYPE SYSTEM &amp; PLANNER</text>
+      <text x="24" y="265" font-size="9" font-weight="700" letter-spacing="1" fill="#006625">BACKEND (BE) — STORAGE &amp; EXECUTION</text>
+      <text x="24" y="435" font-size="9" font-weight="700" letter-spacing="1" fill="#7e22ce">S2 GEOMETRY ENGINE (Google S2 Library)</text>
+      <!-- User -->
+      <rect x="50" y="24" width="200" height="32" rx="5" fill="#fff" stroke="#d8d5cf"/>
+      <text x="150" y="37" text-anchor="middle" font-size="10" font-weight="600" fill="#000">CREATE TABLE … geom GEOMETRY</text>
+      <text x="150" y="49" text-anchor="middle" font-size="9" fill="#716f6d">ST_Contains / ST_Distance / ST_ClusterDBSCAN OVER(…)</text>
+      <!-- FE boxes -->
+      <rect x="30"  y="100" width="130" height="44" rx="5" fill="#fff" stroke="#aad1f7"/>
+      <text x="95"  y="116" text-anchor="middle" font-size="10" font-weight="600" fill="#0047b3">PrimitiveType</text>
+      <text x="95"  y="129" text-anchor="middle" font-size="9" fill="#0047b3">GEOMETRY (16 bytes)</text>
+      <text x="95"  y="140" text-anchor="middle" font-size="8" fill="#0047b3">GeometryType.java</text>
+
+      <rect x="175" y="100" width="130" height="44" rx="5" fill="#fff" stroke="#aad1f7"/>
+      <text x="240" y="116" text-anchor="middle" font-size="10" font-weight="600" fill="#0047b3">TypeSerializer</text>
+      <text x="240" y="129" text-anchor="middle" font-size="9" fill="#0047b3">→ TPrimitiveType.GEOMETRY</text>
+      <text x="240" y="140" text-anchor="middle" font-size="8" fill="#0047b3">Thrift wire format</text>
+
+      <rect x="320" y="100" width="150" height="44" rx="5" fill="#fff" stroke="#aad1f7"/>
+      <text x="395" y="116" text-anchor="middle" font-size="10" font-weight="600" fill="#0047b3">FunctionSet.java</text>
+      <text x="395" y="129" text-anchor="middle" font-size="9" fill="#0047b3">58 ST_* functions registered</text>
+      <text x="395" y="140" text-anchor="middle" font-size="8" fill="#0047b3">120163–120214 (GEOMETRY range)</text>
+
+      <rect x="485" y="100" width="150" height="44" rx="5" fill="#fff" stroke="#aad1f7"/>
+      <text x="560" y="116" text-anchor="middle" font-size="10" font-weight="600" fill="#0047b3">IndexDef.java</text>
+      <text x="560" y="129" text-anchor="middle" font-size="9" fill="#0047b3">IndexType.GIST registered</text>
+      <text x="560" y="140" text-anchor="middle" font-size="8" fill="#0047b3">GiSTIndexParams + checkGiST…</text>
+
+      <rect x="650" y="100" width="200" height="44" rx="5" fill="#fff" stroke="#aad1f7"/>
+      <text x="750" y="116" text-anchor="middle" font-size="10" font-weight="600" fill="#0047b3">Window Functions</text>
+      <text x="750" y="129" text-anchor="middle" font-size="9" fill="#0047b3">ST_ClusterDBSCAN / ST_ClusterKMeans</text>
+      <text x="750" y="140" text-anchor="middle" font-size="8" fill="#0047b3">_need_partition_materializing=true</text>
+
+      <!-- FE row 2 -->
+      <rect x="30"  y="156" width="130" height="36" rx="5" fill="#fff" stroke="#aad1f7"/>
+      <text x="95"  y="171" text-anchor="middle" font-size="9" font-weight="600" fill="#0047b3">ANTLR4 Grammar</text>
+      <text x="95"  y="183" text-anchor="middle" font-size="8" fill="#0047b3">GEOMETRY keyword + baseType</text>
+
+      <rect x="175" y="156" width="130" height="36" rx="5" fill="#fff" stroke="#aad1f7"/>
+      <text x="240" y="171" text-anchor="middle" font-size="9" font-weight="600" fill="#0047b3">TypeFactory / TypeParser</text>
+      <text x="240" y="183" text-anchor="middle" font-size="8" fill="#0047b3">createType / "GEOMETRY"→Type</text>
+
+      <rect x="320" y="156" width="150" height="36" rx="5" fill="#fff" stroke="#aad1f7"/>
+      <text x="395" y="171" text-anchor="middle" font-size="9" font-weight="600" fill="#0047b3">VectorizedBuiltinFunctions</text>
+      <text x="395" y="183" text-anchor="middle" font-size="8" fill="#0047b3">import GeometryType.GEOMETRY</text>
+
+      <!-- BE boxes -->
+      <rect x="30"  y="268" width="140" height="44" rx="5" fill="#fff" stroke="#b3dfc3"/>
+      <text x="100" y="284" text-anchor="middle" font-size="10" font-weight="600" fill="#006625">LogicalType</text>
+      <text x="100" y="297" text-anchor="middle" font-size="9" fill="#006625">TYPE_GEOMETRY = 56</text>
+      <text x="100" y="308" text-anchor="middle" font-size="8" fill="#006625">TYPE_MAX_VALUE = 57</text>
+
+      <rect x="185" y="268" width="140" height="44" rx="5" fill="#fff" stroke="#b3dfc3"/>
+      <text x="255" y="284" text-anchor="middle" font-size="10" font-weight="600" fill="#006625">ScalarTypeInfoImpl</text>
+      <text x="255" y="297" text-anchor="middle" font-size="9" fill="#006625">&lt;TYPE_GEOMETRY&gt;</text>
+      <text x="255" y="308" text-anchor="middle" font-size="8" fill="#006625">WKB storage · WKT from_string</text>
+
+      <rect x="340" y="268" width="145" height="44" rx="5" fill="#fff" stroke="#b3dfc3"/>
+      <text x="412" y="284" text-anchor="middle" font-size="10" font-weight="600" fill="#006625">GeometryFunctions</text>
+      <text x="412" y="297" text-anchor="middle" font-size="9" fill="#006625">geometry_functions.cpp</text>
+      <text x="412" y="308" text-anchor="middle" font-size="8" fill="#006625">58 vectorised spatial functions</text>
+
+      <rect x="500" y="268" width="160" height="44" rx="5" fill="#fff" stroke="#b3dfc3"/>
+      <text x="580" y="284" text-anchor="middle" font-size="10" font-weight="600" fill="#006625">GiST R-Tree Index</text>
+      <text x="580" y="297" text-anchor="middle" font-size="9" fill="#006625">STR bulk-load · .gst file</text>
+      <text x="580" y="308" text-anchor="middle" font-size="8" fill="#006625">O(n log n) build · O(log n+k) search</text>
+
+      <rect x="675" y="268" width="185" height="44" rx="5" fill="#fff" stroke="#b3dfc3"/>
+      <text x="767" y="284" text-anchor="middle" font-size="10" font-weight="600" fill="#006625">Window Agg Functions</text>
+      <text x="767" y="297" text-anchor="middle" font-size="9" fill="#006625">window_geo.h · DBSCAN + k-means</text>
+      <text x="767" y="308" text-anchor="middle" font-size="8" fill="#006625">Materializing mode (full partition)</text>
+
+      <!-- BE row 2 -->
+      <rect x="30"  y="324" width="140" height="36" rx="5" fill="#fff" stroke="#b3dfc3"/>
+      <text x="100" y="339" text-anchor="middle" font-size="9" font-weight="600" fill="#006625">ColumnWriter</text>
+      <text x="100" y="351" text-anchor="middle" font-size="8" fill="#006625">need_gist_index → GiSTIndexWriter</text>
+
+      <rect x="185" y="324" width="140" height="36" rx="5" fill="#fff" stroke="#b3dfc3"/>
+      <text x="255" y="339" text-anchor="middle" font-size="9" font-weight="600" fill="#006625">SegmentWriter</text>
+      <text x="255" y="351" text-anchor="middle" font-size="8" fill="#006625">standalone_index_file .gst</text>
+
+      <rect x="340" y="324" width="145" height="36" rx="5" fill="#fff" stroke="#b3dfc3"/>
+      <text x="412" y="339" text-anchor="middle" font-size="9" font-weight="600" fill="#006625">geo_bounding_box()</text>
+      <text x="412" y="351" text-anchor="middle" font-size="8" fill="#006625">MBR extraction for Point/Line/Polygon</text>
+
+      <!-- S2 layer -->
+      <rect x="30"  y="438" width="200" height="50" rx="5" fill="#fff" stroke="#c4b5fd"/>
+      <text x="130" y="457" text-anchor="middle" font-size="10" font-weight="600" fill="#7e22ce">GeoShape hierarchy</text>
+      <text x="130" y="469" text-anchor="middle" font-size="9" fill="#7e22ce">GeoPoint · GeoLine · GeoPolygon</text>
+      <text x="130" y="481" text-anchor="middle" font-size="8" fill="#7e22ce">from_wkt() · encode_to() · as_wkt()</text>
+
+      <rect x="245" y="438" width="200" height="50" rx="5" fill="#fff" stroke="#c4b5fd"/>
+      <text x="345" y="457" text-anchor="middle" font-size="10" font-weight="600" fill="#7e22ce">S2 Geometry</text>
+      <text x="345" y="469" text-anchor="middle" font-size="9" fill="#7e22ce">S2Polygon::Contains / Intersects</text>
+      <text x="345" y="481" text-anchor="middle" font-size="8" fill="#7e22ce">S2Earth distance · S2LatLng coords</text>
+
+      <rect x="460" y="438" width="200" height="50" rx="5" fill="#fff" stroke="#c4b5fd"/>
+      <text x="560" y="457" text-anchor="middle" font-size="10" font-weight="600" fill="#7e22ce">STR R-Tree (rtree.cpp)</text>
+      <text x="560" y="469" text-anchor="middle" font-size="9" fill="#7e22ce">MBR intersects/within/contains</text>
+      <text x="560" y="481" text-anchor="middle" font-size="8" fill="#7e22ce">Binary .gst format · iterative DFS</text>
+
+      <rect x="675" y="438" width="185" height="50" rx="5" fill="#fff" stroke="#c4b5fd"/>
+      <text x="767" y="457" text-anchor="middle" font-size="10" font-weight="600" fill="#7e22ce">DBSCAN / k-means++</text>
+      <text x="767" y="469" text-anchor="middle" font-size="9" fill="#7e22ce">window_geo.h algorithms</text>
+      <text x="767" y="481" text-anchor="middle" font-size="8" fill="#7e22ce">great-circle dist · deterministic seed</text>
+
+      <!-- Arrows -->
+      <line x1="150" y1="56" x2="95"  y2="100" stroke="#0047b3" stroke-width="1.2" marker-end="url(#geoBlu)" stroke-dasharray="4,3"/>
+      <line x1="150" y1="56" x2="240" y2="100" stroke="#0047b3" stroke-width="1.2" marker-end="url(#geoBlu)" stroke-dasharray="4,3"/>
+      <line x1="150" y1="56" x2="395" y2="100" stroke="#0047b3" stroke-width="1.2" marker-end="url(#geoBlu)" stroke-dasharray="4,3"/>
+      <line x1="95"  y1="212" x2="100" y2="268" stroke="#006625" stroke-width="1.2" marker-end="url(#geoGrn)"/>
+      <line x1="240" y1="212" x2="255" y2="268" stroke="#006625" stroke-width="1.2" marker-end="url(#geoGrn)"/>
+      <line x1="395" y1="212" x2="412" y2="268" stroke="#006625" stroke-width="1.2" marker-end="url(#geoGrn)"/>
+      <line x1="412" y1="360" x2="345" y2="438" stroke="#7e22ce" stroke-width="1.2" marker-end="url(#geoPur)"/>
+      <line x1="580" y1="360" x2="560" y2="438" stroke="#7e22ce" stroke-width="1.2" marker-end="url(#geoPur)"/>
+    </svg>
+
+    <div class="g3 mt3">
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📦 Type Registration (end-to-end)</div>
+        <table class="tbl"><thead><tr><th>Layer</th><th>File</th><th>Change</th></tr></thead><tbody>
+          <tr><td>FE enum</td><td>PrimitiveType.java</td><td>GEOMETRY("GEOMETRY", 16)</td></tr>
+          <tr><td>FE class</td><td>GeometryType.java</td><td>Singleton, MAX_WKB=1MB</td></tr>
+          <tr><td>Grammar</td><td>StarRocksLex.g4</td><td>GEOMETRY keyword token</td></tr>
+          <tr><td>Thrift</td><td>Types.thrift</td><td>TPrimitiveType.GEOMETRY</td></tr>
+          <tr><td>BE enum</td><td>logical_type.h</td><td>TYPE_GEOMETRY=56, MAX=57</td></tr>
+          <tr><td>BE storage</td><td>types.cpp</td><td>ScalarTypeInfoImpl&lt;GEOMETRY&gt;</td></tr>
+          <tr><td>Zone map</td><td>logical_type.h</td><td>Excluded (variable-length)</td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;">🗺️ GiST R-Tree Index</div>
+        <table class="tbl"><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>
+          <tr><td>Algorithm</td><td>STR bulk-load (Sort-Tile-Recursive)</td></tr>
+          <tr><td>Build time</td><td>O(n log n)</td></tr>
+          <tr><td>Query time</td><td>O(log n + k) — MBR pruning</td></tr>
+          <tr><td>File</td><td>{rowset}_{seg}_{id}.gst</td></tr>
+          <tr><td>Node default</td><td>50 entries (configurable)</td></tr>
+          <tr><td>Predicates</td><td>Contains · Within · Intersects</td></tr>
+          <tr><td>Proto</td><td>IndexType.GIST = 5</td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;">📊 Window Functions</div>
+        <table class="tbl"><thead><tr><th>Function</th><th>Algorithm</th><th>Output</th></tr></thead><tbody>
+          <tr><td>ST_ClusterDBSCAN</td><td>DBSCAN O(n²)</td><td>INT (NULL=noise)</td></tr>
+          <tr><td>ST_ClusterKMeans</td><td>k-means++ + Lloyd</td><td>INT 0..k-1</td></tr>
+          <tr><td colspan="3" style="font-size:10px;color:var(--muted);">Both require: OVER(PARTITION BY … ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)</td></tr>
+        </tbody></table>
+        <div style="font-size:11px;color:var(--txt2);margin-top:10px;font-family:var(--text);">
+          Uses <code style="font-family:var(--mono);font-size:10px;">_need_partition_materializing=true</code> (same pattern as NTILE) — full partition visible before first output row.
+        </div>
+      </div>
+    </div>
+  </div><!-- /geo-arch -->
+
+  <!-- ── Call Flow ── -->
+  <div id="geo-flow" class="iview">
+    <div class="g2">
+      <div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:12px;">DDL — CREATE TABLE with GEOMETRY column &amp; GiST index</div>
+        <div class="flow">
+          <div class="frow">
+            <div class="flabel fl-user">User</div>
+            <div class="fsteps">
+              <div class="fstep"><div class="fnum">1</div><div class="fbody"><div class="ft">SQL submitted</div><div class="fd">CREATE TABLE t (id INT, geom GEOMETRY, INDEX idx (geom) USING GIST PROPERTIES("node_capacity"="50"))</div></div></div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-fe">FE</div>
+            <div class="fsteps">
+              <div class="fstep"><div class="fnum">2</div><div class="fbody"><div class="ft">Grammar parse</div><div class="fd">ANTLR4: GEOMETRY token → baseType rule; GIST token → indexType rule</div></div></div>
+              <div class="fstep"><div class="fnum">3</div><div class="fbody"><div class="ft">Type resolution</div><div class="fd">TypeParser: "GEOMETRY" → GeometryType.GEOMETRY; TypeFactory.createType(GEOMETRY)</div></div></div>
+              <div class="fstep"><div class="fnum">4</div><div class="fbody"><div class="ft">Index validation</div><div class="fd">IndexAnalyzer.checkGiSTIndexValid() — confirms column is GEOMETRY, node_capacity in [4,1024]</div></div></div>
+              <div class="fstep"><div class="fnum">5</div><div class="fbody"><div class="ft">Thrift serialisation</div><div class="fd">TypeSerializer: GEOMETRY → TPrimitiveType.GEOMETRY; IndexType.GIST → IndexType.GIST=5 (proto)</div></div></div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-be">BE</div>
+            <div class="fsteps">
+              <div class="fstep"><div class="fnum">6</div><div class="fbody"><div class="ft">Schema storage</div><div class="fd">LogicalType: TYPE_GEOMETRY=56; ScalarTypeInfoImpl&lt;TYPE_GEOMETRY&gt; wired into type registry</div></div></div>
+              <div class="fstep"><div class="fnum">7</div><div class="fbody"><div class="ft">Segment write (on INSERT)</div><div class="fd">SegmentWriter sets need_gist_index=true; GiSTIndexWriter accumulates MBRs; finish() bulk-builds STR R-Tree → writes .gst file</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:12px;">Query — Spatial filter with GiST index acceleration</div>
+        <div class="flow">
+          <div class="frow">
+            <div class="flabel fl-user">User</div>
+            <div class="fsteps">
+              <div class="fstep"><div class="fnum">1</div><div class="fbody"><div class="ft">SQL submitted</div><div class="fd">SELECT id FROM t WHERE ST_Contains(ST_GeomFromText('POLYGON(…)'), geom)</div></div></div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-fe">FE</div>
+            <div class="fsteps">
+              <div class="fstep"><div class="fnum">2</div><div class="fbody"><div class="ft">Function resolution</div><div class="fd">ST_Contains(GEOMETRY,GEOMETRY) → ID 120066; arg types validated via VectorizedBuiltinFunctions</div></div></div>
+              <div class="fstep"><div class="fnum">3</div><div class="fbody"><div class="ft">Plan generation</div><div class="fd">Planner generates scan + filter plan; GiST index eligible for ST_Contains/ST_Within/ST_Intersects predicates</div></div></div>
+            </div>
+          </div>
+          <div class="farr">↓</div>
+          <div class="frow">
+            <div class="flabel fl-be">BE</div>
+            <div class="fsteps">
+              <div class="fstep"><div class="fnum">4</div><div class="fbody"><div class="ft">GiST index scan</div><div class="fd">GiSTIndexReader loads .gst; query MBR computed; iterative DFS prunes non-overlapping subtrees; candidate row_ids returned</div></div></div>
+              <div class="fstep"><div class="fnum">5</div><div class="fbody"><div class="ft">Exact predicate eval</div><div class="fd">GeometryFunctions::st_contains() called on candidates only; S2Polygon::Contains() for polygon×point</div></div></div>
+              <div class="fstep"><div class="fnum">6</div><div class="fbody"><div class="ft">Result returned</div><div class="fd">Matching rows projected and sent to FE; false positives from MBR step filtered by exact S2 evaluation</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt3">
+      <div style="font-size:12px;font-weight:700;margin-bottom:12px;">Window Function Flow — ST_ClusterDBSCAN</div>
+      <div class="flow">
+        <div class="frow">
+          <div class="flabel fl-user">User</div>
+          <div class="fsteps">
+            <div class="fstep"><div class="fnum">1</div><div class="fbody"><div class="ft">SQL with OVER clause</div><div class="fd">SELECT ST_ClusterDBSCAN(geom, 1000.0, 5) OVER (PARTITION BY region ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)</div></div></div>
+          </div>
+        </div>
+        <div class="farr">↓</div>
+        <div class="frow">
+          <div class="flabel fl-fe">FE</div>
+          <div class="fsteps">
+            <div class="fstep"><div class="fnum">2</div><div class="fbody"><div class="ft">Analytic function lookup</div><div class="fd">FunctionSet: "st_clusterdbscan" found in onlyAnalyticUsedFunctions; signature (GEOMETRY,DOUBLE,INT)→INT validated</div></div></div>
+          </div>
+        </div>
+        <div class="farr">↓</div>
+        <div class="frow">
+          <div class="flabel fl-be">BE</div>
+          <div class="fsteps">
+            <div class="fstep"><div class="fnum">3</div><div class="fbody"><div class="ft">Partition materialisation</div><div class="fd">analytor.cpp: _need_partition_materializing=true; entire partition buffered before first update_batch_single_state_with_frame call</div></div></div>
+            <div class="fstep"><div class="fnum">4</div><div class="fbody"><div class="ft">DBSCAN execution</div><div class="fd">First call: extract centroids for all N rows, build O(n²) neighbour lists, run BFS cluster expansion; store cluster_ids[] in state</div></div></div>
+            <div class="fstep"><div class="fnum">5</div><div class="fbody"><div class="ft">Per-row output</div><div class="fd">get_values() called for each row; writes cluster_ids[cur_position] — NULL for noise points (fewer than minpoints neighbours within eps)</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /geo-flow -->
+
+  <!-- ── Function Reference ── -->
+  <div id="geo-funcs" class="iview">
+    <div class="g2">
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;">Input / Output (IDs 120163–120170)</div>
+        <table class="tbl"><thead><tr><th>Function</th><th>Args → Return</th><th>Description</th></tr></thead><tbody>
+          <tr><td>ST_GeomFromText</td><td>VARCHAR → GEOMETRY</td><td>Parse WKT string</td></tr>
+          <tr><td>ST_GeomFromWKB</td><td>VARBINARY → GEOMETRY</td><td>Construct from WKB bytes</td></tr>
+          <tr><td>ST_GeomFromGeoJSON</td><td>VARCHAR → GEOMETRY</td><td>Parse GeoJSON (Point/Line/Polygon)</td></tr>
+          <tr><td>ST_AsText / ST_AsWKT</td><td>GEOMETRY → VARCHAR</td><td>WKT text representation</td></tr>
+          <tr><td>ST_AsWKB</td><td>GEOMETRY → VARBINARY</td><td>WKB binary bytes</td></tr>
+          <tr><td>ST_AsGeoJSON</td><td>GEOMETRY → VARCHAR</td><td>RFC 7946 GeoJSON</td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;">Constructors (IDs 120184–120195)</div>
+        <table class="tbl"><thead><tr><th>Function</th><th>Args → Return</th><th>Description</th></tr></thead><tbody>
+          <tr><td>ST_MakePoint / ST_Point</td><td>DOUBLE, DOUBLE → GEOMETRY</td><td>Construct a POINT</td></tr>
+          <tr><td>ST_MakeLine</td><td>GEOMETRY, GEOMETRY → GEOMETRY</td><td>LINESTRING from two POINTs</td></tr>
+          <tr><td>ST_Envelope</td><td>GEOMETRY → GEOMETRY</td><td>Minimum bounding rectangle (polygon)</td></tr>
+          <tr><td>ST_Centroid</td><td>GEOMETRY → GEOMETRY</td><td>Centroid POINT (S2 weighted)</td></tr>
+          <tr><td>ST_Buffer</td><td>GEOMETRY, DOUBLE → GEOMETRY</td><td>Buffer polygon (degree radius)</td></tr>
+          <tr><td>ST_ConvexHull</td><td>GEOMETRY → GEOMETRY</td><td>Convex hull (Andrew's chain)</td></tr>
+          <tr><td>ST_Simplify</td><td>GEOMETRY, DOUBLE → GEOMETRY</td><td>Douglas-Peucker simplification</td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;">Accessors (IDs 120171–120183)</div>
+        <table class="tbl"><thead><tr><th>Function</th><th>Return</th><th>Notes</th></tr></thead><tbody>
+          <tr><td>ST_X / ST_Y</td><td>DOUBLE</td><td>Longitude / latitude of POINT</td></tr>
+          <tr><td>ST_GeometryType</td><td>VARCHAR</td><td>'ST_Point', 'ST_LineString', …</td></tr>
+          <tr><td>ST_SRID</td><td>INT</td><td>Always 4326 (WGS84)</td></tr>
+          <tr><td>ST_IsValid</td><td>BOOLEAN</td><td>S2-level validity check</td></tr>
+          <tr><td>ST_IsEmpty</td><td>BOOLEAN</td><td>True for NULL / empty</td></tr>
+          <tr><td>ST_NDims / ST_Dimension</td><td>INT</td><td>Always 2 / 0-1-2 by type</td></tr>
+          <tr><td>ST_NPoints / ST_NumPoints</td><td>INT</td><td>Total vertex count</td></tr>
+          <tr><td>ST_StartPoint / ST_EndPoint</td><td>GEOMETRY</td><td>First / last vertex of LINESTRING</td></tr>
+          <tr><td>ST_PointN</td><td>GEOMETRY</td><td>1-based Nth vertex</td></tr>
+          <tr><td>ST_IsClosed / ST_IsRing</td><td>BOOLEAN</td><td>Linestring closure checks</td></tr>
+          <tr><td>ST_NumInteriorRings</td><td>INT</td><td>Polygon hole count</td></tr>
+          <tr><td>ST_ExteriorRing</td><td>GEOMETRY</td><td>Outer ring as LINESTRING</td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;">Measurements (IDs 120196–120199)</div>
+        <table class="tbl"><thead><tr><th>Function</th><th>Return</th><th>Notes</th></tr></thead><tbody>
+          <tr><td>ST_Distance / ST_DistanceSphere</td><td>DOUBLE</td><td>Great-circle distance, metres (point-to-point)</td></tr>
+          <tr><td>ST_Length</td><td>DOUBLE</td><td>Arc length in metres (LINESTRING)</td></tr>
+          <tr><td>ST_Area</td><td>DOUBLE</td><td>Area in m² (POLYGON, S2 steradians × R²)</td></tr>
+          <tr><td>ST_Perimeter</td><td>DOUBLE</td><td>Perimeter in metres (POLYGON)</td></tr>
+        </tbody></table>
+        <div style="margin-top:14px;font-size:12px;font-weight:700;margin-bottom:10px;">Predicates (IDs 120200–120210)</div>
+        <table class="tbl"><thead><tr><th>Function</th><th>Return</th><th>Semantics</th></tr></thead><tbody>
+          <tr><td>ST_Contains</td><td>BOOLEAN</td><td>A fully contains B</td></tr>
+          <tr><td>ST_Within</td><td>BOOLEAN</td><td>A is inside B (= Contains(B,A))</td></tr>
+          <tr><td>ST_Intersects</td><td>BOOLEAN</td><td>Share any point (S2Polygon::Intersects)</td></tr>
+          <tr><td>ST_Disjoint</td><td>BOOLEAN</td><td>NOT ST_Intersects</td></tr>
+          <tr><td>ST_Equals</td><td>BOOLEAN</td><td>Canonical-encoding equality</td></tr>
+          <tr><td>ST_Covers / ST_CoveredBy</td><td>BOOLEAN</td><td>Contains incl. boundary</td></tr>
+          <tr><td>ST_Touches</td><td>BOOLEAN</td><td>Share boundary, interiors don't intersect</td></tr>
+          <tr><td>ST_Overlaps</td><td>BOOLEAN</td><td>Share interior, neither contains</td></tr>
+          <tr><td>ST_Crosses</td><td>BOOLEAN</td><td>Mixed-dimension intersection</td></tr>
+          <tr><td>ST_DWithin</td><td>BOOLEAN</td><td>Within distance (metres)</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div><!-- /geo-funcs -->
+
+  <!-- ── Examples ── -->
+  <div id="geo-ex" class="iview">
+    <div class="ex-grid">
+
+      <div class="ex-card">
+        <div class="ex-hdr">
+          <div><div class="ex-title">DDL — GEOMETRY column with GiST index</div><div class="ex-desc">Create a table storing cell tower locations with spatial index</div></div>
+          <button class="copy-btn" onclick="cp(this)">Copy</button>
+        </div>
+        <div class="ex-body"><div class="sql"><span class="kw">CREATE TABLE</span> cell_towers (
+    tower_id  <span class="kw">BIGINT</span>    <span class="kw">NOT NULL</span>,
+    region    <span class="kw">VARCHAR</span>(64),
+    site_type <span class="kw">VARCHAR</span>(32),
+    location  <span class="fn">GEOMETRY</span>,
+    <span class="kw">INDEX</span> idx_location (location) <span class="kw">USING GIST</span>
+        <span class="kw">PROPERTIES</span>(<span class="str">"node_capacity"</span> = <span class="str">"50"</span>)
+) <span class="kw">ENGINE</span>=OLAP
+<span class="kw">DUPLICATE KEY</span>(tower_id)
+<span class="kw">DISTRIBUTED BY HASH</span>(tower_id) <span class="kw">BUCKETS</span> 8
+<span class="kw">PROPERTIES</span>(<span class="str">"replication_num"</span> = <span class="str">"1"</span>);
+
+<span class="cmt">-- Insert with WKT</span>
+<span class="kw">INSERT INTO</span> cell_towers <span class="kw">VALUES</span>
+    (1, <span class="str">'NE'</span>, <span class="str">'macro'</span>, <span class="fn">ST_GeomFromText</span>(<span class="str">'POINT (-73.9 40.7)'</span>)),
+    (2, <span class="str">'NE'</span>, <span class="str">'small'</span>, <span class="fn">ST_MakePoint</span>(-74.01, 40.71));</div></div>
+      </div>
+
+      <div class="ex-card">
+        <div class="ex-hdr">
+          <div><div class="ex-title">Spatial filter — towers within service area</div><div class="ex-desc">GiST index accelerates polygon containment to O(log n)</div></div>
+          <button class="copy-btn" onclick="cp(this)">Copy</button>
+        </div>
+        <div class="ex-body"><div class="sql"><span class="cmt">-- Find all towers inside a service polygon</span>
+<span class="kw">SELECT</span> tower_id, region, site_type,
+       <span class="fn">ST_AsText</span>(location) <span class="kw">AS</span> wkt
+<span class="kw">FROM</span>   cell_towers
+<span class="kw">WHERE</span>  <span class="fn">ST_Contains</span>(
+    <span class="fn">ST_GeomFromText</span>(<span class="str">'POLYGON ((-74.1 40.6,
+        -73.7 40.6, -73.7 40.9,
+        -74.1 40.9, -74.1 40.6))'</span>),
+    location
+)
+<span class="kw">ORDER BY</span> tower_id;</div></div>
+      </div>
+
+      <div class="ex-card">
+        <div class="ex-hdr">
+          <div><div class="ex-title">Measurement — coverage area and perimeter</div><div class="ex-desc">ST_Area and ST_Perimeter on polygon geometries</div></div>
+          <button class="copy-btn" onclick="cp(this)">Copy</button>
+        </div>
+        <div class="ex-body"><div class="sql"><span class="cmt">-- Area (m²) and perimeter (m) of service polygons</span>
+<span class="kw">SELECT</span> zone_id,
+       <span class="fn">ST_Area</span>(boundary)                        <span class="kw">AS</span> area_m2,
+       <span class="fn">ST_Perimeter</span>(boundary)                   <span class="kw">AS</span> perimeter_m,
+       <span class="fn">ST_Area</span>(boundary) / 1e6                 <span class="kw">AS</span> area_km2,
+       <span class="fn">ST_AsText</span>(<span class="fn">ST_Centroid</span>(boundary))        <span class="kw">AS</span> centroid_wkt
+<span class="kw">FROM</span>   service_zones
+<span class="kw">WHERE</span>  <span class="fn">ST_Area</span>(boundary) &gt; 1000000  <span class="cmt">-- &gt; 1 km²</span>
+<span class="kw">ORDER BY</span> area_m2 <span class="kw">DESC</span>;</div></div>
+      </div>
+
+      <div class="ex-card">
+        <div class="ex-hdr">
+          <div><div class="ex-title">Distance query — towers near a point</div><div class="ex-desc">ST_DWithin for proximity search, ST_Distance for exact metres</div></div>
+          <button class="copy-btn" onclick="cp(this)">Copy</button>
+        </div>
+        <div class="ex-body"><div class="sql"><span class="cmt">-- Towers within 2 km of a given coordinate</span>
+<span class="kw">SELECT</span> tower_id, region,
+       <span class="fn">ROUND</span>(<span class="fn">ST_Distance</span>(location,
+           <span class="fn">ST_MakePoint</span>(-73.935, 40.730)) / <span class="str">1000</span>, 2)
+           <span class="kw">AS</span> dist_km
+<span class="kw">FROM</span>   cell_towers
+<span class="kw">WHERE</span>  <span class="fn">ST_DWithin</span>(
+           location,
+           <span class="fn">ST_MakePoint</span>(-73.935, 40.730),
+           2000.0  <span class="cmt">-- 2000 metres</span>
+       )
+<span class="kw">ORDER BY</span> dist_km;</div></div>
+      </div>
+
+      <div class="ex-card">
+        <div class="ex-hdr">
+          <div><div class="ex-title">ST_ClusterDBSCAN — density-based clustering</div><div class="ex-desc">Group nearby towers; noise (isolated towers) return NULL</div></div>
+          <button class="copy-btn" onclick="cp(this)">Copy</button>
+        </div>
+        <div class="ex-body"><div class="sql"><span class="cmt">-- DBSCAN: eps=500m, minpoints=3</span>
+<span class="kw">SELECT</span> tower_id, region,
+       <span class="fn">ST_ClusterDBSCAN</span>(location, <span class="str">500.0</span>, <span class="str">3</span>)
+           <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> region
+                 <span class="kw">ROWS BETWEEN UNBOUNDED PRECEDING
+                          AND UNBOUNDED FOLLOWING</span>)
+           <span class="kw">AS</span> cluster_id
+<span class="kw">FROM</span>   cell_towers
+<span class="kw">ORDER BY</span> region, cluster_id NULLS LAST, tower_id;
+
+<span class="cmt">-- Count towers per cluster (exclude noise)</span>
+<span class="kw">SELECT</span> region, cluster_id, <span class="fn">COUNT</span>(*) <span class="kw">AS</span> towers
+<span class="kw">FROM</span> (
+    <span class="kw">SELECT</span> region,
+           <span class="fn">ST_ClusterDBSCAN</span>(location, <span class="str">500.0</span>, <span class="str">3</span>)
+               <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> region
+                     <span class="kw">ROWS BETWEEN UNBOUNDED PRECEDING
+                              AND UNBOUNDED FOLLOWING</span>)
+               <span class="kw">AS</span> cluster_id
+    <span class="kw">FROM</span>   cell_towers
+) t
+<span class="kw">WHERE</span>  cluster_id <span class="kw">IS NOT NULL</span>
+<span class="kw">GROUP BY</span> region, cluster_id
+<span class="kw">ORDER BY</span> region, towers <span class="kw">DESC</span>;</div></div>
+      </div>
+
+      <div class="ex-card">
+        <div class="ex-hdr">
+          <div><div class="ex-title">ST_ClusterKMeans — fixed-k clustering</div><div class="ex-desc">Partition towers into k groups using k-means++</div></div>
+          <button class="copy-btn" onclick="cp(this)">Copy</button>
+        </div>
+        <div class="ex-body"><div class="sql"><span class="cmt">-- Split each region into 4 clusters</span>
+<span class="kw">SELECT</span> tower_id, region,
+       <span class="fn">ST_ClusterKMeans</span>(location, <span class="str">4</span>)
+           <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> region
+                 <span class="kw">ROWS BETWEEN UNBOUNDED PRECEDING
+                          AND UNBOUNDED FOLLOWING</span>)
+           <span class="kw">AS</span> cluster_id,
+       <span class="fn">ST_AsText</span>(location) <span class="kw">AS</span> coords
+<span class="kw">FROM</span>   cell_towers
+<span class="kw">ORDER BY</span> region, cluster_id;
+
+<span class="cmt">-- Centroid of each k-means cluster</span>
+<span class="kw">SELECT</span> region, cluster_id,
+       <span class="fn">ST_AsText</span>(<span class="fn">ST_Centroid</span>(
+           <span class="fn">ST_Envelope</span>(<span class="fn">ST_MakeLine</span>(
+               <span class="fn">ST_MakePoint</span>(<span class="fn">MIN</span>(<span class="fn">ST_X</span>(location)),
+                             <span class="fn">MIN</span>(<span class="fn">ST_Y</span>(location))),
+               <span class="fn">ST_MakePoint</span>(<span class="fn">MAX</span>(<span class="fn">ST_X</span>(location)),
+                             <span class="fn">MAX</span>(<span class="fn">ST_Y</span>(location)))
+           ))
+       )) <span class="kw">AS</span> cluster_bbox_center
+<span class="kw">FROM</span> (
+    <span class="kw">SELECT</span> region, location,
+           <span class="fn">ST_ClusterKMeans</span>(location, <span class="str">4</span>)
+               <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> region
+                     <span class="kw">ROWS BETWEEN UNBOUNDED PRECEDING
+                              AND UNBOUNDED FOLLOWING</span>)
+               <span class="kw">AS</span> cluster_id
+    <span class="kw">FROM</span>   cell_towers
+) t
+<span class="kw">GROUP BY</span> region, cluster_id;</div></div>
+      </div>
+
+      <div class="ex-card">
+        <div class="ex-hdr">
+          <div><div class="ex-title">GeoJSON round-trip and type inspection</div><div class="ex-desc">Convert to GeoJSON, inspect geometry type and coordinates</div></div>
+          <button class="copy-btn" onclick="cp(this)">Copy</button>
+        </div>
+        <div class="ex-body"><div class="sql"><span class="kw">SELECT</span>
+    tower_id,
+    <span class="fn">ST_GeometryType</span>(location)     <span class="kw">AS</span> geom_type,
+    <span class="fn">ST_X</span>(location)                <span class="kw">AS</span> longitude,
+    <span class="fn">ST_Y</span>(location)                <span class="kw">AS</span> latitude,
+    <span class="fn">ST_SRID</span>(location)             <span class="kw">AS</span> srid,
+    <span class="fn">ST_IsValid</span>(location)          <span class="kw">AS</span> is_valid,
+    <span class="fn">ST_AsGeoJSON</span>(location)        <span class="kw">AS</span> geojson
+<span class="kw">FROM</span>  cell_towers
+<span class="kw">LIMIT</span> 5;
+
+<span class="cmt">-- Parse back from GeoJSON</span>
+<span class="kw">SELECT</span> <span class="fn">ST_AsText</span>(
+    <span class="fn">ST_GeomFromGeoJSON</span>(
+        <span class="str">'{"type":"Point","coordinates":[-73.935,40.730]}'</span>
+    )
+);</div></div>
+      </div>
+
+      <div class="ex-card">
+        <div class="ex-hdr">
+          <div><div class="ex-title">Convex hull and simplification</div><div class="ex-desc">Reduce polygon complexity while preserving topology</div></div>
+          <button class="copy-btn" onclick="cp(this)">Copy</button>
+        </div>
+        <div class="ex-body"><div class="sql"><span class="cmt">-- Convex hull of a polygon</span>
+<span class="kw">SELECT</span> zone_id,
+       <span class="fn">ST_NPoints</span>(boundary)              <span class="kw">AS</span> orig_pts,
+       <span class="fn">ST_NPoints</span>(<span class="fn">ST_ConvexHull</span>(boundary)) <span class="kw">AS</span> hull_pts,
+       <span class="fn">ST_AsText</span>(<span class="fn">ST_ConvexHull</span>(boundary))  <span class="kw">AS</span> hull_wkt
+<span class="kw">FROM</span>   service_zones;
+
+<span class="cmt">-- Douglas-Peucker simplification (0.001° tolerance)</span>
+<span class="kw">SELECT</span> zone_id,
+       <span class="fn">ST_NPoints</span>(boundary)                       <span class="kw">AS</span> orig_pts,
+       <span class="fn">ST_NPoints</span>(<span class="fn">ST_Simplify</span>(boundary, <span class="str">0.001</span>))  <span class="kw">AS</span> simplified_pts,
+       <span class="fn">ST_Area</span>(<span class="fn">ST_Simplify</span>(boundary, <span class="str">0.001</span>))     <span class="kw">AS</span> approx_area_m2
+<span class="kw">FROM</span>   service_zones
+<span class="kw">WHERE</span>  <span class="fn">ST_NPoints</span>(boundary) &gt; 20;</div></div>
+      </div>
+
+    </div>
+  </div><!-- /geo-ex -->
+
+</div>
+<!-- ══════ end geometry panel ══════ -->
+
   </div><!-- /content -->
 </div><!-- /main -->
 </div><!-- /shell -->
