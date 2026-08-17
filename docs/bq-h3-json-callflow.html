@@ -175,7 +175,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M5 7h6M5 10h4"/></svg>
       BigQuery Catalog
       <span class="sb-status">
-        <svg class="icon-spin" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2a6 6 0 1 1-4.24 1.76" stroke-linecap="round"/></svg>
+        <svg class="icon-done" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8l4 4 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </span>
     </div>
     <div class="sb-link" onclick="go('h3',this)">
@@ -192,14 +192,11 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
         <svg class="icon-done" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8l4 4 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </span>
     </div>
-  </div>
-  <div class="sb-sect">
-    <div class="sb-lbl" style="color:var(--warn-txt);letter-spacing:.06em;">◎ Roadmap</div>
     <div class="sb-link" onclick="go('spanner',this)">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6" stroke-dasharray="3,2"/><circle cx="8" cy="8" r="2"/></svg>
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/></svg>
       Cloud Spanner
       <span class="sb-status">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#7a4f00" stroke-width="2"><circle cx="8" cy="8" r="6" stroke-dasharray="3,2"/></svg>
+        <svg class="icon-done" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8l4 4 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </span>
     </div>
   </div>
@@ -637,8 +634,15 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
 
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div class="card" style="border-left:3px solid var(--success-txt);">
-          <div style="font-size:13px;font-weight:700;color:var(--success-txt);margin-bottom:5px;">⚡ Performance</div>
-          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">Dashboard queries that previously took 30–120 s against BigQuery Storage streams return in <strong>&lt;50 ms</strong> from the local MV. Aggregations pre-computed at refresh time.</div>
+          <div style="font-size:13px;font-weight:700;color:var(--success-txt);margin-bottom:5px;">⚡ Measured Performance (NP — 12.1M rows)</div>
+          <div style="font-family:var(--text);font-size:12px;color:var(--txt2);line-height:1.6;">
+            <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:11px;">
+              <tr style="background:var(--surface2);"><th style="text-align:left;padding:3px 6px;">Query</th><th style="padding:3px 6px;">BQ Direct</th><th style="padding:3px 6px;">MV</th><th style="padding:3px 6px;">Speedup</th></tr>
+              <tr><td style="padding:3px 6px;">COUNT by resource</td><td style="padding:3px 6px;text-align:right;color:#c00;">6,868 ms</td><td style="padding:3px 6px;text-align:right;color:var(--success-txt);">118 ms</td><td style="padding:3px 6px;text-align:right;font-weight:700;">58×</td></tr>
+              <tr style="background:var(--surface2);"><td style="padding:3px 6px;">Filter + aggregate</td><td style="padding:3px 6px;text-align:right;color:#c00;">4,479 ms</td><td style="padding:3px 6px;text-align:right;color:var(--success-txt);">160 ms</td><td style="padding:3px 6px;text-align:right;font-weight:700;">28×</td></tr>
+              <tr><td style="padding:3px 6px;">CASE + ORDER BY on MV</td><td style="padding:3px 6px;text-align:right;color:#aaa;">—</td><td style="padding:3px 6px;text-align:right;color:var(--success-txt);">156 ms</td><td style="padding:3px 6px;text-align:right;">local only</td></tr>
+            </table>
+          </div>
         </div>
         <div class="card" style="border-left:3px solid var(--info-txt);">
           <div style="font-size:13px;font-weight:700;color:var(--info-txt);margin-bottom:5px;">💰 Cost reduction</div>
@@ -2258,7 +2262,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
     <rect x="470" y="622" width="10" height="10" rx="2" fill="#fde8eb" stroke="#e10014" stroke-width="1.5"/>
     <text x="485" y="632" font-size="9" fill="#c40015">New (BigQuery)</text>
     <rect x="580" y="622" width="10" height="10" rx="2" fill="#fff2cc" stroke="#7a4f00" stroke-dasharray="3,2"/>
-    <text x="595" y="632" font-size="9" fill="#7a4f00">Roadmap (Cloud Spanner)</text>
+    <text x="595" y="632" font-size="9" fill="#2e7d32">New (Cloud Spanner)</text>
     <rect x="705" y="622" width="10" height="10" rx="2" fill="#1d1d1b" stroke="#3a3a38"/>
     <text x="720" y="632" font-size="9" fill="#000">Internal catalog (default_catalog)</text>
   </svg>
@@ -2282,7 +2286,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
         <tr><td>Elasticsearch</td><td>Search</td><td>User/pass · API key</td><td>ES index → SQL</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
         <tr><td>ODPS (MaxCompute)</td><td>Cloud DB</td><td>Alibaba AccessKey</td><td>ODPS columnar · JNI</td><td><span class="bdg bdg-ok"><span class="bdg-dot"></span>GA</span></td></tr>
         <tr style="background:#fde8eb;"><td>BigQuery</td><td>Cloud DW</td><td>ADC / WIF (GKE)</td><td>Arrow IPC (Storage Read API)</td><td><span class="bdg" style="background:#e10014;color:#fff;"><span class="bdg-dot" style="background:#fff;"></span>NEW · Aug 17</span></td></tr>
-        <tr style="background:#fff2cc;border:1px dashed #7a4f00;"><td>Cloud Spanner</td><td>Cloud DB</td><td>ADC / WIF (GKE)</td><td>Spanner API · gRPC</td><td><span class="bdg" style="background:#fff2cc;color:#7a4f00;border:1px dashed #7a4f00;"><span class="bdg-dot" style="background:#7a4f00;"></span>Roadmap</span></td></tr>
+        <tr><td>Cloud Spanner</td><td>Cloud DB</td><td>ADC / WIF (GKE)</td><td>Spanner API · gRPC</td><td><span class="bdg" style="background:#e8f5e9;color:#2e7d32;border:1px solid #2e7d32;"><span class="bdg-dot" style="background:#2e7d32;"></span>New</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -2293,7 +2297,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;background:var(--bg)
      SPANNER PANEL
 ══════════════════════════════════════ -->
 <div id="spanner" class="panel">
-  <p class="stitle">Cloud Spanner External Catalog — Roadmap</p>
+  <p class="stitle">Cloud Spanner External Catalog — <span style="color:#2e7d32;">Implemented ✓</span></p>
 
   <div class="cl cl-warn" style="margin-bottom:16px;">
     <h4>What this will give you</h4>
