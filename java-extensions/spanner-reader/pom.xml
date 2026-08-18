@@ -44,24 +44,14 @@
             <artifactId>log4j-core</artifactId>
         </dependency>
 
-        <!-- Cloud Spanner client (gRPC + high-level API) -->
+        <!-- Cloud Spanner client (gRPC + high-level API).
+             Allow google-cloud-spanner to pull in its own protobuf version
+             (3.26+) since spanner-reader runs in an isolated ChildFirstClassLoader
+             and RuntimeVersion (added in protobuf 3.26) is required by 6.118.0. -->
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-spanner</artifactId>
             <version>${spanner.version}</version>
-            <exclusions>
-                <!-- avoid duplicate protobuf versions -->
-                <exclusion>
-                    <groupId>com.google.protobuf</groupId>
-                    <artifactId>protobuf-java</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- Explicit protobuf version aligned with java-extensions parent -->
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
         </dependency>
 
         <dependency>
